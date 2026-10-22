@@ -52,6 +52,10 @@ def build_result_rows(
             "cv_metric": selection.get("cv_metric"),
             "cv_mean": selection.get("cv_mean"),
             "cv_std": selection.get("cv_std"),
+            **{key: selection.get(key) for key in (
+                "cv_std_repeat", "cv_std_within", "cv_std_all_folds", "cv_best_repeat_mean",
+                "accuracy_metric", "stability_metric", "aggregation_method")},
+            "rank_definition": "holdout_reporting_only",
             "selected_repeat_idx": selection.get("selected_repeat_idx"),
             "selection_source": selection.get("source"),
             "selected_models": ",".join(result.get("selected_models") or []),
@@ -101,6 +105,8 @@ def build_result_rows(
         "cv_metric",
         "cv_mean",
         "cv_std",
+        "cv_std_repeat", "cv_std_within", "cv_std_all_folds", "cv_best_repeat_mean",
+        "accuracy_metric", "stability_metric", "aggregation_method", "rank_definition",
         "selected_repeat_idx",
         "selection_source",
         "selected_models",
@@ -163,6 +169,7 @@ def _markdown_report(summary: dict[str, Any], leaderboard: pd.DataFrame) -> str:
         "",
         "## Audit",
         "",
+        "- `rank` is holdout reporting order only; `TOPSIS_Rank` is the training-CV model-selection rank.",
         "- Hold-out metrics are reporting-only; model/parameter/repeat selection is train-side CV only.",
         "- See `run_summary.json` for machine-readable configuration, artifacts, and split metadata.",
         "",
@@ -216,18 +223,33 @@ def write_result_bundle(
     feature_count: int,
     feature_selection: dict[str, Any],
     genotype_imputation: dict[str, Any],
+    paths=None,
 ) -> dict[str, Path]:
     """Write read-only CSV, JSON, Markdown, and HTML summaries for one training run."""
     results_dir = Path(results_dir)
     reports_dir = results_dir / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
+    if paths is not None:
+        ranking_path = paths.resolve("topsis_simple")
+        split_manifest_path = paths.resolve("split_manifest")
+        stacking_selection_path = paths.resolve("stacking_selected_models")
+    else:
+        ranking_path = results_dir / "model_comparison_cv_topsis_simple.csv"
+        split_manifest_path = results_dir / "split_manifest.json"
+        stacking_selection_path = results_dir / "stacking_selected_models.json"
     leaderboard = build_result_rows(all_model_results, task_type, split_strategy)
+    if ranking_path is not None and ranking_path.exists():
+        ranked = pd.read_csv(ranking_path)
+        leaderboard = leaderboard.merge(
+            ranked[["Model", "TOPSIS_Rank", "TOPSIS_Score"]],
+            left_on="model", right_on="Model", how="left",
+        ).drop(columns="Model")
     leaderboard_path = reports_dir / "model_leaderboard.csv"
     leaderboard.to_csv(leaderboard_path, index=False)
 
     completed = int((leaderboard["status"] == "completed").sum())
-    split_manifest = _read_json(results_dir / "split_manifest.json")
-    stacking_selection = _read_json(results_dir / "stacking_selected_models.json")
+    split_manifest = _read_json(split_manifest_path) if split_manifest_path else None
+    stacking_selection = _read_json(stacking_selection_path) if stacking_selection_path else None
     summary = {
         "schema_version": RESULT_SCHEMA_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),

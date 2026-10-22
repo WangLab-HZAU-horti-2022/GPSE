@@ -121,8 +121,8 @@ def _build_parser(
     train_group.add_argument(
         "--n_repeats",
         type=int,
-        default=100,
-        help="Number of repeated training iterations (default: 100)",
+        default=50,
+        help="Number of repeated training iterations (default: 50)",
     )
     train_group.add_argument(
         "--patience",
@@ -157,8 +157,11 @@ def _build_parser(
     train_group.add_argument(
         "--results_dir",
         type=str,
-        default="optimization_results_v2",
-        help="Directory to save optimization and prediction results (default: optimization_results_v2)",
+        default=None,
+        help=(
+            "Run output directory. When omitted, a unique run directory is "
+            "created under optimization_results_v3/runs/<run_id>/"
+        ),
     )
     train_group.add_argument("--random_seed", type=int, default=42, help="Random seed for reproducibility (default: 42)")
     train_group.add_argument(
@@ -282,6 +285,10 @@ def _build_parser(
     )
 
     cv_group = parser.add_argument_group("cross-validation options")
+    cv_group.add_argument(
+        "--cv_stability_metric", choices=["cv_std_repeat", "cv_std_within", "cv_std_all_folds"],
+        default="cv_std_repeat", help="TOPSIS stability: repeat sample SD (default), within-repeat RMS SD, or all-fold sample SD",
+    )
     cv_group.add_argument(
         "--cv_file",
         type=str,

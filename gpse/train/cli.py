@@ -391,9 +391,27 @@ def main(
 
         training_standardize = args.standardize_phenotype
 
+        from gpse.output.paths import create_run
+
+        output_paths = create_run(results_dir=args.results_dir, trait=args.target_trait)
+        try:
+            from gpse.output.manifest import start_run_manifest
+            from gpse.output.readme import write_root_readme
+
+            if output_paths.root_dir is not None:
+                write_root_readme(output_paths.root_dir)
+            start_run_manifest(
+                output_paths,
+                trait=args.target_trait,
+                task_type=args.task_type,
+            )
+        except Exception as manifest_exc:  # metadata must never break training
+            main_logger.warning(f"Run manifest initialization skipped: {manifest_exc}")
+
         predictor = GenomicPredictorV2(
             random_seed=args.random_seed,
-            results_dir=args.results_dir,
+            results_dir=str(output_paths.run_dir),
+            output_paths=output_paths,
             n_trials=args.trials,
             n_threads=args.n_jobs,
             max_parallel_jobs=args.max_workers,
@@ -401,6 +419,7 @@ def main(
             test_size=args.test_size,
             n_splits=args.n_splits,
             n_repeats=args.n_repeats,
+            cv_stability_metric=args.cv_stability_metric,
             patience=args.patience,
             use_default_params=args.use_default_params,
             save_models=args.save_models,
@@ -426,16 +445,25 @@ def main(
             feature_id_mode="vcf" if args.preserve_vcf_snp_ids else None,
         )
 
-        predictor.run_all_models(
-            geno_file=processed_geno_file,
-            pheno_file=processed_pheno_file,
-            target_trait=args.target_trait,
-            models=args.models,
-            use_stacking=args.use_stacking,
-            top_n_models=args.top_n_models,
-            cv_folds=args.cv_folds,
-            use_same_test_set=args.use_same_test_set,
-        )
+        try:
+            predictor.run_all_models(
+                geno_file=processed_geno_file,
+                pheno_file=processed_pheno_file,
+                target_trait=args.target_trait,
+                models=args.models,
+                use_stacking=args.use_stacking,
+                top_n_models=args.top_n_models,
+                cv_folds=args.cv_folds,
+                use_same_test_set=args.use_same_test_set,
+            )
+        except BaseException:
+            try:
+                from gpse.output.manifest import finalize_run_manifest
+
+                finalize_run_manifest(output_paths, run_status="failed")
+            except Exception:
+                pass
+            raise
         return 0
     except KeyboardInterrupt:
         main_logger.warning("Training interrupted by user (Ctrl+C).")

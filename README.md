@@ -416,28 +416,25 @@ gpse train \
 > `--n_classes` for you. You only need to pass them explicitly when you want
 > to override the auto-detected values or when no info file is present.
 
-> **💡 Custom TOPSIS ranking criteria: `--topsis_config`**
+> **Repeated CV and TOPSIS model selection**
 >
-> GPSE ranks models using TOPSIS with configurable criteria and weights.
-> By default, regression uses `Test Pearson (0.8) + Test Pearson std (0.2)`
-> and classification uses `Test Accuracy (0.8) + Test Accuracy std (0.2)`.
-> The built-in config (`gpse/config/topsis.yaml`) lists all 11 available
-> metrics per task type; metrics with `weight: 0` are reference-only.
+> The default protocol is **50 repeats × 5 folds**, within one fixed holdout
+> training partition. TOPSIS uses `cv_mean` (mean of all repeat means) and
+> `cv_std_repeat` (sample SD of repeat means, `ddof=1`), with fixed weights
+> `[0.8, 0.2]`, `neglog` stability transformation and L2 normalization.
+> Holdout metrics are reporting-only. The best repeat is diagnostic and may
+> supply training-only hyperparameters; it never supplies ranking criteria.
 >
-> To customise ranking (e.g. also consider Spearman or training time):
+> Explicit alternatives: `--cv_stability_metric cv_std_within` (RMS within-repeat
+> sample SD), or `cv_std_all_folds` (sample SD of all folds). A single-repeat
+> smoke run must explicitly choose one of these; repeat SD is undefined.
+> Missing folds/repeats or undefined validation Pearson invalidate selection.
+> Use a fresh results directory for every run; historical results are preserved.
 >
-> ```bash
-> gpse train \
->     --geno_file data/train_genotype.csv \
->     --pheno_file data/train_phenotype.csv \
->     --target_trait Fruit_Weight \
->     --task_type regression \
->     --topsis_config my_topsis.yaml \
->     --results_dir output_results/
-> ```
->
-> See [Configuration → TOPSIS](docs/wiki/05-configuration.md#topsis-configuration-topsisyaml)
-> for the full schema and all available criteria.
+> Offline recovery: `python -m gpse.tools.reaggregate_cv OLD_RESULTS --output NEW_DIR
+> --expected-repeats 50 --expected-folds 5` (put this command on one line).
+> See [CV audit and formulas](docs/cv-statistics.md) and
+> [TOPSIS configuration](docs/wiki/05-configuration.md#topsis-configuration-topsisyaml).
 
 > **💡 Custom model registry: `--model_config`**
 >
@@ -875,49 +872,71 @@ Fold values range from `0` to `train_folds - 1`.
 
 ### `gpse train` Outputs
 
-The default result directory is `optimization_results_v2/`.
+When `--results_dir` is omitted, each run creates a unique directory under
+`optimization_results_v3/runs/<run_id>/`. When `--results_dir` is supplied it
+remains the run directory itself; either way the run directory uses the v3
+categorized layout below. Historical `optimization_results_v2/` directories
+stay readable but are never modified.
+
+```text
+{run_dir}/
+├── README.md                     # where every key result lives
+├── run_manifest.json             # run metadata + artifact index
+├── data/                         # split manifest, train/test ids, cv folds
+├── models/{model_name}/          # repeats, fold models, deployment ensemble
+├── selection/                    # TOPSIS inputs/outputs, stacking selection
+├── ensembles/gpse/               # stacking ensemble model + results
+├── evaluation/                   # hold-out comparison tables
+│   └── predictions/              # TOPSIS rank-1 hold-out predictions
+├── reports/                      # leaderboard, run summary, training report
+└── logs/
+```
 
 Main outputs:
 
 ```text
-{results_dir}/model_comparison.csv
-{results_dir}/cv_folds/{target_trait}_cv_{n_repeats}x{train_folds}.csv
-{results_dir}/{model_name}/summary_results.json
-{results_dir}/{model_name}/repeat_{i}/repeat_results.json
-{results_dir}/{model_name}/repeat_{i}/all_predictions.json
+{run_dir}/evaluation/model_comparison.csv
+{run_dir}/data/cv_folds/{target_trait}_cv_{n_repeats}x{train_folds}.csv
+{run_dir}/models/{model_name}/summary_results.json
+{run_dir}/models/{model_name}/repeat_{i}/repeat_results.json
+{run_dir}/models/{model_name}/repeat_{i}/all_predictions.json
 ```
 
 When `--save_models` is enabled:
 
 ```text
-{results_dir}/{model_name}/repeat_{i}/fold_{j}_model.pkl
+{run_dir}/models/{model_name}/repeat_{i}/fold_{j}_model.pkl
 ```
 
 Representative model output:
 
 ```text
-{results_dir}/{model_name}/representative_model/model.pkl
-{results_dir}/{model_name}/representative_model/info.json
+{run_dir}/models/{model_name}/representative_model/model.pkl
+{run_dir}/models/{model_name}/representative_model/info.json
 ```
 
 Regression phenotype standardization output:
 
 ```text
-{results_dir}/phenotype_scaler.json
+{run_dir}/phenotype_scaler.json
 ```
 
 Stacking output:
 
 ```text
-{results_dir}/ensemble_stacking/stacking_ensemble_model.pkl
-{results_dir}/ensemble_stacking/stacking_results.pkl
+{run_dir}/ensembles/gpse/stacking_ensemble_model.pkl
+{run_dir}/ensembles/gpse/stacking_results.pkl
 ```
 
 TOPSIS model-ranking output:
 
 ```text
-{results_dir}/model_comparison_topsis.csv
-{results_dir}/model_comparison_topsis_simple.csv
+{run_dir}/selection/cv_fold_metrics.csv
+{run_dir}/selection/cv_repeat_metrics.csv
+{run_dir}/selection/cv_aggregation_summary.json
+{run_dir}/selection/model_comparison_cv.csv
+{run_dir}/selection/model_comparison_cv_topsis.csv
+{run_dir}/selection/model_comparison_cv_topsis_simple.csv
 ```
 
 ### `gpse predict`

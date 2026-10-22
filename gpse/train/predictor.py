@@ -119,7 +119,7 @@ class GenomicPredictorV2:
         repeat_workers: int = 1,
         test_size: float = 0.2,
         n_splits: int = 5,
-        n_repeats: int = 100,
+        n_repeats: int = 50,
         patience: int = 20,
         use_default_params: bool = False,
         save_models: bool = True,
@@ -143,6 +143,8 @@ class GenomicPredictorV2:
         topsis_config: str = None,
         model_config: str = None,
         feature_id_mode: str | None = None,
+        cv_stability_metric: str = "cv_std_repeat",
+        output_paths=None,
     ):
         """
         Initialize the predictor.
@@ -188,6 +190,14 @@ class GenomicPredictorV2:
         standardize_phenotype : bool
             Whether to standardize phenotype data (regression only).
         """
+        from gpse.train._cv_statistics import STABILITY_METRICS
+        if cv_stability_metric not in STABILITY_METRICS:
+            raise ValueError(f"Unknown CV stability metric: {cv_stability_metric}")
+        if n_repeats < 1 or n_splits < 2:
+            raise ValueError("CV requires >=1 repeat and >=2 folds")
+        if n_repeats == 1 and cv_stability_metric == "cv_std_repeat":
+            raise ValueError("cv_std_repeat requires >=2 repeats; explicitly choose cv_std_within for a single-repeat run")
+        self.cv_stability_metric = cv_stability_metric
         self.random_seed = random_seed
         self.results_dir = results_dir
         self.n_trials = n_trials
@@ -239,6 +249,17 @@ class GenomicPredictorV2:
         # Create results directory
         self.results_dir = Path(results_dir)
         self.results_dir.mkdir(exist_ok=True, parents=True)
+
+        # Unified output path manager (v3 layout inside the run directory).
+        # When the caller does not provide one, derive it from results_dir so
+        # direct programmatic use keeps working.
+        if output_paths is not None:
+            self.paths = output_paths
+            self.results_dir = self.paths.run_dir
+        else:
+            from gpse.output.paths import RunPaths
+
+            self.paths = RunPaths(self.results_dir)
 
         # Create logs directory
         self.logs_dir = self.results_dir / ModelConstants.default_logs_dir

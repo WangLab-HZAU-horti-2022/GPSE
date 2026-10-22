@@ -68,6 +68,8 @@ poetry.lock
 *.pkl
 *.joblib
 optimization_results/
+optimization_results_v2/
+optimization_results_v3/
 logs/
 cv_folds/
 
@@ -99,7 +101,6 @@ dummy_out/
 # result/
 
 # ---- Other ----
-scripts
 
 # ---- Markdown reports / notes under tests ----
 tests/**/*.md

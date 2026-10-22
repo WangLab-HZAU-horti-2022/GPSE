@@ -252,14 +252,17 @@ def test_catboost_disables_file_output_without_results_directory(monkeypatch):
 
 
 def test_holdout_reports_accumulate_split_strategies_and_mark_gblup(tmp_path):
+    from gpse.output.paths import RunPaths
+
     results = {
         "gblup_reg": {"avg_ensemble_pearson": 0.3, "std_ensemble_pearson": 0.01},
         "rf_reg": {"avg_ensemble_pearson": 0.5, "std_ensemble_pearson": 0.02},
     }
-    _write_holdout_reports(tmp_path, results, "regression", "random")
-    _write_holdout_reports(tmp_path, results, "regression", "structure_aware")
+    paths = RunPaths(tmp_path)
+    _write_holdout_reports(paths, results, "regression", "random")
+    _write_holdout_reports(paths, results, "regression", "structure_aware")
 
-    report = pd.read_csv(tmp_path / "reports" / "model_comparison_holdout.csv")
+    report = pd.read_csv(tmp_path / "evaluation" / "model_comparison_holdout.csv")
     assert set(report["split_strategy"]) == {"random", "structure_aware"}
     assert report.loc[report["model"] == "gblup_reg", "is_gblup_baseline"].all()
 
@@ -584,6 +587,7 @@ def test_repeat_standardizes_phenotype_from_holdout_training_labels_only(tmp_pat
         results_dir=str(tmp_path),
         n_splits=2,
         n_repeats=1,
+        cv_stability_metric="cv_std_within",
         n_threads=1,
         max_parallel_jobs=1,
         repeat_workers=1,

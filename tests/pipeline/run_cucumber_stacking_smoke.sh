@@ -32,6 +32,7 @@ gpse train \
   --trials 2 \
   --train_folds 2 \
   --n_repeats 1 \
+  --cv_stability_metric cv_std_within \
   --patience 2 \
   --random_seed 42 \
   --use_stacking \

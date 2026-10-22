@@ -119,32 +119,21 @@ def optimize_model_parameters(
                 else:
                     y_fold_pred = fold_model.predict(X_fold_val)
 
-                    if (
-                        np.isnan(y_fold_pred).any()
-                        or np.std(y_fold_pred) < ModelConstants.correlation_min_threshold
-                    ):
-                        log.warning(
-                            f"Warning: Fold {fold_idx + 1} produced invalid predictions "
-                            f"(NaN or constant values)"
-                        )
-                        fold_score = 0.0
-                    else:
-                        fold_score = pearsonr(y_fold_val, y_fold_pred)[0]
-                        if np.isnan(fold_score):
-                            log.warning(
-                                f"Warning: Fold {fold_idx + 1} Pearson correlation is NaN"
-                            )
-                            fold_score = 0.0
+                    if (not np.isfinite(y_fold_pred).all() or len(y_fold_val) < 2
+                            or np.ptp(y_fold_pred) == 0 or np.ptp(y_fold_val) == 0):
+                        raise ValueError("Undefined validation Pearson (constant/non-finite input)")
+                    fold_score = pearsonr(y_fold_val, y_fold_pred)[0]
+                    if not np.isfinite(fold_score):
+                        raise ValueError("Non-finite validation Pearson")
 
                 cv_scores.append(fold_score)
 
             except Exception as e:
                 log.error(f"Fold {fold_idx + 1} training failed: {str(e)}")
-                cv_scores.append(0.0)
+                raise optuna.TrialPruned(f"Invalid CV fold {fold_idx + 1}: {e}") from e
 
-        if not cv_scores:
-            log.error("All folds failed, returning a low score")
-            return 0.0
+        if len(cv_scores) != self.n_splits:
+            raise optuna.TrialPruned("Incomplete CV trial; every configured fold is required")
 
         mean_score = np.mean(cv_scores)
         std_score = np.std(cv_scores)
@@ -161,6 +150,8 @@ def optimize_model_parameters(
     # Create early stopping callback
     def early_stopping_callback(study, trial):
         if trial.number >= self.patience:
+            if not any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
+                return False
             best_value = study.best_value
             recent_trials = [
                 t.value
@@ -208,6 +199,8 @@ def optimize_model_parameters(
         n_jobs=ModelConstants.optuna_n_jobs,
     )
 
+    if not any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
+        raise ValueError("No valid complete CV trials; undefined Pearson/failed folds cannot be imputed")
     best_params = study.best_params
     log.info(f"Best parameters: {best_params}")
     if self.task_type == "classification":

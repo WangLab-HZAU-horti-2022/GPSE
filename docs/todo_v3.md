@@ -642,3 +642,45 @@ MAX_THREADS=90 MIN_FREE_MEM_GB=64 MEM_PER_TRAIT_GB=32 THREADS_PER_TRAIT=8 \
 4. **B-P1-16/B-P2-10/11（调度器）**：by_cpu=0 显式报错、中断返回非 0、失败分类只扫本次日志段、dry-run 不 mkdir。
 5. **B-P1-1/2（SNP 身份体系）**：统一 canonical end 规则并在 manifest 中记录 REF/ALT，predict 侧校验方向。
 
+---
+
+## 附录 C：TOPSIS 多准则可配置化改造（计划 2026-10-23 周五进行）
+
+> 新增日期：2026-10-22
+> 背景文档：`docs/26.10.22/topsis_investigation_report.md`、`docs/26.10.22/results_directory_review.md`、`docs/methods_code_audit.md`（§4.1/4.8）
+> 目标：将 TOPSIS 从**固定双准则**扩展为**可配置的多准则决策模块**，支持固定权重与熵权动态赋权两种模式，并探索加入模型计算时间作为第三准则。
+
+### C.1 现状（改造起点）
+
+| 项 | 现状 | 位置 |
+|---|---|---|
+| 准则 | 硬编码 2 个：[CV Pearson（max），CV Std（min）] | `gpse/train/_pipeline.py:365-366` |
+| 权重 | 硬编码手工 `0.8,0.2` | `gpse/train/_pipeline.py:367` |
+| 熵权 | 函数存在但 `use_entropy_weights=False` 硬编码，主路径从不调用 | `gpse/utils/genomic_utils.py:134`、`gpse/train/topsis.py:34-44` |
+| 配置文件 | `gpse/config/topsis.yaml` / `get_topsis_configuration()` 存在但排名路径**未调用**，`--topsis_config` 仅影响日志 | `gpse/config/_topsis_config.py:110-129`（audit 4.8） |
+| min 变换 | 硬编码 `neglog`（另有 reciprocal/minmax_inv 可选） | `_pipeline.py:368` |
+| 训练时间 | 已在统计中（`avg_training_time`），但未进入 TOPSIS | `model_comparison.csv` 的 `Training Time (s)` 列 |
+
+### C.2 改造内容
+
+1. **准则可配置**：决策矩阵从配置读取（默认仍为 `[CV Pearson, CV Std]`），支持扩展准则；候选第三准则：**模型计算时间**（cost 型，取 `avg_training_time`；需先定义口径——单 fold 均值还是全 repeat 总时长，跨模型可比性需验证）。
+2. **权重模式可配置**：`fixed`（手工权重，默认 `0.8,0.2`）/ `entropy`（熵权动态赋权）二选一；接通现有但未生效的 `--topsis_config` / `topsis.yaml` 路径。
+3. **修复熵权分支已知缺陷**（审计 B-P2-1 + 本次核查发现）：
+   - 全零列权重 NaN（0/0）、负值准则取 log 得 NaN、单行时 1/log(1) 除零（`topsis.py:37-44`）；
+   - 熵权在**原始数据**上计算、却应用于变换+归一化后的矩阵，与论文式 (2.25) 不自洽——需明确熵权计算的数据基（建议与正向化后数据对齐）；
+   - 手动权重不校验负数/和为 0；非有限分数过滤后数组与 df 错位（`topsis.py:123-145`）。
+4. **配套**：选型配置与所用权重写入 `stacking_selected_models.json` 与规划中的 `reports/selection_summary.json`（见 `results_directory_review.md` P0-1），保证消融结果可追溯。
+
+### C.3 约束与原则
+
+- **默认行为必须逐分不变**：默认配置（双准则 + fixed 0.8/0.2 + neglog）下 TOPSIS_Score 与现状完全一致——论文现有全部结果（figure_2、manuscript_runs、6 物种）均为此口径，不能因重构改变（详见 `topsis_investigation_report.md` 第七节）。
+- 熵权模式定位为 **Panel f 消融的对照组**（"数据驱动赋权"），不替换主路径默认；论文表述统一为固定权重后再考虑是否启用。
+- 多准则（≥3）下熵权才更有方法学意义，计算时间准则的探索结果可为论文讨论部分提供素材。
+
+### C.4 验收标准
+
+- 默认配置回归：同一 `model_comparison_cv.csv` 输入下，新旧实现的 `TOPSIS_Score`/`TOPSIS_Rank` 完全一致；
+- `--topsis_config` 指定的 criteria/weights/min_transform 真正生效并写入选型留痕文件；
+- 熵权模式对 B-P2-1 所列边界情况（全零列、负值、单行）不产出 NaN，且有单元测试覆盖；
+- 计算时间作为第三准则的实验输出独立的 TOPSIS 结果文件，不覆盖双准则结果。
+

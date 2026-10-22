@@ -30,7 +30,7 @@ from gpse.train._model_pipeline import build_training_pipeline
 
 
 def _save_deployment_ensemble(self, model_name, params, X, y, model_dir):
-    """Train a full-data K-fold ensemble matching the evaluation artifact form."""
+    """Train a K-fold deployment ensemble on the supplied holdout training partition."""
     deployment_dir = model_dir / "deployment_ensemble"
     deployment_dir.mkdir(parents=True, exist_ok=True)
     try:
@@ -83,16 +83,16 @@ def _save_deployment_ensemble(self, model_name, params, X, y, model_dir):
         info = {
             "artifact_role": "deployment_ensemble",
             "n_members": self.n_splits,
-            "trained_on": "all_samples",
+            "trained_on": "holdout_training_partition",
             "performance_source": "holdout_fold_ensemble",
-            "performance_belongs_to_saved_model": True,
+            "performance_belongs_to_saved_model": False,
             "task_type": self.task_type,
             "target_transform": "raw",
             "feature_selection": self.feature_selection_config.as_dict(),
             "genotype_imputation": self.genotype_imputation_config.as_dict(),
             "note": (
                 "Hold-out metrics came from the same K-member fold-ensemble form; "
-                "this deployment artifact was retrained on all samples and must not "
+                "this deployment artifact was refitted on the training partition and must not "
                 "be evaluated on the former hold-out set."
             ),
         }

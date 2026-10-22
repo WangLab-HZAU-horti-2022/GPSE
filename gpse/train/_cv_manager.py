@@ -58,7 +58,7 @@ def prepare_cv_folds(self, pheno_data: pd.DataFrame, target_trait: str) -> pd.Da
     if self.cv_file is not None:
         cv_file_path = Path(self.cv_file)
     else:
-        cv_dir = self.results_dir / "cv_folds"
+        cv_dir = self.paths.data_dir / "cv_folds"
         cv_dir.mkdir(exist_ok=True, parents=True)
         cv_file_path = cv_dir / f"{target_trait}_cv_{self.n_repeats}x{self.n_splits}.csv"
 
@@ -74,7 +74,7 @@ def prepare_cv_folds(self, pheno_data: pd.DataFrame, target_trait: str) -> pd.Da
             pheno_data_copy.set_index(self.cv_id_column, inplace=True)
 
         cv_pheno_data = prepare_cv_data(
-            pheno_data_copy, str(cv_file_path), self.n_repeats, self.n_splits, seed=42
+            pheno_data_copy, str(cv_file_path), self.n_repeats, self.n_splits, seed=self.random_seed
         )
         main_logger.info(f"Saved new CV folds to: {cv_file_path}")
 
@@ -223,7 +223,16 @@ def generate_cv_folds_from_file(
 def save_train_only_cv_folds(self, X: pd.DataFrame, folds, repeat_dir) -> Path:
     """Persist the exact post-hold-out CV assignment for auditability."""
     assignments = np.full(len(X), -1, dtype=int)
-    for fold_idx, (_, val_idx) in enumerate(folds):
+    if len(folds) != self.n_splits:
+        raise ValueError("CV fold count differs from configured n_splits")
+    for fold_idx, (train_idx, val_idx) in enumerate(folds):
+        train_idx, val_idx = np.asarray(train_idx, dtype=int), np.asarray(val_idx, dtype=int)
+        combined = np.concatenate([train_idx, val_idx])
+        if (not len(train_idx) or not len(val_idx) or len(combined) != len(X)
+                or len(np.unique(combined)) != len(X)
+                or set(combined) != set(range(len(X)))
+                or (assignments[val_idx] != -1).any()):
+            raise ValueError("CV folds must partition training samples with disjoint validation folds")
         assignments[val_idx] = fold_idx
     if (assignments < 0).any():
         raise ValueError("Train-only CV assignment did not cover every training sample")

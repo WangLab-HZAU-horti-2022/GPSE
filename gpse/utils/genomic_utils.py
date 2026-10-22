@@ -27,28 +27,30 @@ from .log_utils import shorten_path
 
 def calculate_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
     """Calculate all performance metrics."""
-    # Constant inputs make correlation coefficients undefined (scipy emits
-    # ConstantInputWarning and returns NaN); treat them as 0.0 instead.
-    if np.ptp(y_true) == 0 or np.ptp(y_pred) == 0:
-        pearson_corr = 0.0
-        spearman_corr = 0.0
+    # Undefined correlations stay undefined, with an explicit status for audits.
+    y_true, y_pred = np.asarray(y_true), np.asarray(y_pred)
+    status = "valid"
+    pearson_corr = spearman_corr = float("nan")
+    if len(y_true) < 2:
+        status = "insufficient_samples"
+    elif not np.isfinite(y_true).all() or not np.isfinite(y_pred).all():
+        status = "non_finite_input"
+    elif np.ptp(y_true) == 0 or np.ptp(y_pred) == 0:
+        status = "constant_input"
     else:
         try:
-            pearson_corr = pearsonr(y_true, y_pred)[0]
-            if np.isnan(pearson_corr):
-                pearson_corr = 0.0
-        except Exception:
-            pearson_corr = 0.0
-
-        try:
-            spearman_corr = spearmanr(y_true, y_pred)[0]
-            if np.isnan(spearman_corr):
-                spearman_corr = 0.0
-        except Exception:
-            spearman_corr = 0.0
-        
+            pearson_corr = float(pearsonr(y_true, y_pred)[0])
+            spearman_corr = float(spearmanr(y_true, y_pred)[0])
+            if not np.isfinite(pearson_corr):
+                status = "non_finite_correlation"
+        except (ValueError, FloatingPointError) as exc:
+            status = f"calculation_failed: {exc}"
+    if status != "valid":
+        import warnings
+        warnings.warn(f"Undefined correlation: {status}", RuntimeWarning, stacklevel=2)
     return {
         'pearson': pearson_corr,
+        'pearson_status': status,
         'spearman': spearman_corr,
         'r2': r2_score(y_true, y_pred),
         'mse': mean_squared_error(y_true, y_pred),
@@ -159,6 +161,9 @@ def create_comparison_table(all_model_results: Dict[str, Dict[str, Any]], result
         else:
             print(msg)
         return
+
+    results_dir = Path(results_dir)
+    results_dir.mkdir(parents=True, exist_ok=True)
 
     # Prepare comparison data
     comparison_data = []
@@ -408,13 +413,13 @@ def generate_fold_seed(random_seed: int, repeat_idx: int, fold_idx: int) -> int:
 def create_model_result_directory(results_dir: Path, model_name: str) -> Path:
     """Create main directory for model results."""
     model_dir = results_dir / model_name
-    model_dir.mkdir(exist_ok=True, parents=True)
+    model_dir.mkdir(exist_ok=False, parents=True)
     return model_dir
 
 def create_repeat_result_directory(results_dir: Path, model_name: str, repeat_idx: int) -> Path:
     """Create directory for repetition training results."""
     repeat_dir = results_dir / model_name / f"repeat_{repeat_idx+1}"
-    repeat_dir.mkdir(exist_ok=True, parents=True)
+    repeat_dir.mkdir(exist_ok=False, parents=True)
     return repeat_dir
 
 def create_plots_directory(repeat_dir: Path) -> Path:

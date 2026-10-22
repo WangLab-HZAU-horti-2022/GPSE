@@ -40,6 +40,7 @@ def resolve_model_path(model: str | Path) -> Path:
         direct_candidates = [
             path / "deployment_ensemble",
             path / "ensemble_stacking" / "stacking_ensemble_model.pkl",
+            path / "ensembles" / "gpse" / "stacking_ensemble_model.pkl",
             path / "representative_model" / "model.pkl",
             path / "model.pkl",
         ]
@@ -48,9 +49,15 @@ def resolve_model_path(model: str | Path) -> Path:
                 return candidate
             if candidate.exists():
                 return candidate
-        deployment_ensembles = sorted(path.glob("*/deployment_ensemble"))
-        representative_models = sorted(path.glob("*/representative_model/model.pkl"))
-        stacking_models = sorted(path.glob("*/ensemble_stacking/stacking_ensemble_model.pkl"))
+        deployment_ensembles = sorted(path.glob("*/deployment_ensemble")) + sorted(
+            path.glob("models/*/deployment_ensemble")
+        )
+        representative_models = sorted(
+            path.glob("*/representative_model/model.pkl")
+        ) + sorted(path.glob("models/*/representative_model/model.pkl"))
+        stacking_models = sorted(
+            path.glob("*/ensemble_stacking/stacking_ensemble_model.pkl")
+        ) + sorted(path.glob("ensembles/gpse/stacking_ensemble_model.pkl"))
         candidates = deployment_ensembles + stacking_models + representative_models
         if len(candidates) == 1:
             return candidates[0]

@@ -28,93 +28,32 @@ Loading logic (`gpse/utils/configuration.py`): deep-merged in the order **packag
 
 ## TOPSIS Configuration (`topsis.yaml`)
 
-The TOPSIS (Technique for Order of Preference by Similarity to Ideal Solution) evaluator ranks trained models using multiple performance criteria. The configuration lives in `gpse/config/topsis.yaml` and defines which metrics participate in ranking and their relative importance.
-
-### Schema
-
-```yaml
-tasks:
-  regression:       # or "classification"
-    criteria:
-      - name: "Test Pearson"      # must match a column in model_comparison.csv
-        type: max                  # "max" = higher is better, "min" = lower is better
-        weight: 0.8                # relative importance (normalised internally)
-```
-
-### Weight Semantics
-
-- Weights are normalised at runtime — only the **ratio** between non-zero weights matters.
-- Criteria with `weight: 0` are **reference-only**: they appear in the config for documentation and can be activated by setting a positive weight in a custom config file. They do **not** participate in the TOPSIS ranking computation.
-- At least one criterion must have `weight > 0`.
-
-### Default Criteria
-
-**Regression** (11 criteria, 2 active):
-
-| Criterion | Type | Weight | Status |
-|-----------|------|--------|--------|
-| Test Pearson | max | 0.8 | **active** |
-| Test Pearson (std) | min | 0.2 | **active** |
-| Test Spearman | max | 0 | reference |
-| Test Spearman (std) | min | 0 | reference |
-| Validation Pearson | max | 0 | reference |
-| Validation Pearson (std) | min | 0 | reference |
-| Test MSE | min | 0 | reference |
-| Test MSE (std) | min | 0 | reference |
-| Ensemble Pearson | max | 0 | reference |
-| Ensemble Pearson (std) | min | 0 | reference |
-| Training Time (s) | min | 0 | reference |
-
-**Classification** (11 criteria, 2 active):
-
-| Criterion | Type | Weight | Status |
-|-----------|------|--------|--------|
-| Test Accuracy | max | 0.8 | **active** |
-| Test Accuracy (std) | min | 0.2 | **active** |
-| Test F1 | max | 0 | reference |
-| Test F1 (std) | min | 0 | reference |
-| Test AUC | max | 0 | reference |
-| Test AUC (std) | min | 0 | reference |
-| Validation Accuracy | max | 0 | reference |
-| Validation Accuracy (std) | min | 0 | reference |
-| Ensemble Accuracy | max | 0 | reference |
-| Ensemble Accuracy (std) | min | 0 | reference |
-| Training Time (s) | min | 0 | reference |
-
-### Custom Config File
-
-Users can supply their own TOPSIS config via `--topsis_config`:
-
-```bash
-gpse train \
-    --geno_file data/genotype.parquet \
-    --pheno_file data/phenotype.csv \
-    --target_trait Fruit_Weight \
-    --task_type regression \
-    --topsis_config my_topsis.yaml
-```
-
-Example custom config that also considers Spearman correlation and training time:
+Formal selection uses **training-only aggregated repeated CV**, with exactly two
+criteria and fixed manual weights `[0.8, 0.2]`. Holdout metrics cannot participate.
+The default protocol is 50×5; stability uses `ddof=1`, not population SD.
 
 ```yaml
 tasks:
-  regression:
+  regression:  # same configuration for classification (validation accuracy)
     criteria:
-      - name: "Test Pearson"
-        type: max
-        weight: 0.5
-      - name: "Test Pearson (std)"
-        type: min
-        weight: 0.1
-      - name: "Test Spearman"
-        type: max
-        weight: 0.3
-      - name: "Training Time (s)"
-        type: min
-        weight: 0.1
+      - {name: cv_mean, type: max, weight: 0.8}
+      - {name: cv_std_repeat, type: min, weight: 0.2}
 ```
 
-When `--topsis_config` is omitted, the built-in `gpse/config/topsis.yaml` is used. The active configuration (source file, active criteria, and reference criteria) is printed at the start of every training run.
+Use `--cv_stability_metric cv_std_within` or `cv_std_all_folds` to explicitly
+change stability definition. If supplying `--topsis_config`, its two active
+criteria must agree with that flag and retain the fixed weights. Legacy test-set
+criteria, extra active criteria and changed weights are rejected before training.
+
+All repeats and folds must be complete and validation scores finite. Zero SD uses
+`-log(SD + 1e-12)` followed by L2 normalization. Constant criteria contribute no
+separation; if all weighted criteria are constant, scores are 0.5 and ranks tie.
+Alphabetical order resolves tied output order for deterministic Top-N selection.
+Invalid inputs stop TOPSIS; no alternate ranking is silently substituted.
+
+`cv_std_repeat` describes sensitivity to repeat splits on overlapping samples;
+it is neither a standard error nor a generalization confidence interval.
+See [CV audit, recovery and formulas](../cv-statistics.md).
 
 ## Model Registry (`models.yaml`)
 

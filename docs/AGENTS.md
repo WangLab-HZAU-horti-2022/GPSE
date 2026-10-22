@@ -42,6 +42,7 @@ gpse/
 ├── config/                 # 常量、YAML 配置、TOPSIS 配置
 ├── convert/                # gpse convert — 数据转换 / QC / 表型处理（独立业务域）
 ├── models/                 # 模型注册表、Optuna 搜索空间（回归 14 + 分类 6）
+├── output/                 # v3 结果输出层：路径管理、run manifest、artifact 注册、汇总、README、跨 run 索引
 ├── predict/                # gpse predict — 仅 stub，未实现
 ├── tasks/                  # 分类任务运行时支持（标签编码等）
 ├── train/                  # gpse train — 训练 / CV / TOPSIS / Stacking（独立业务域）
@@ -93,10 +94,12 @@ CLI (cli.py)
          │      ├── _pipeline.py         —  run_all_models() 顶层循环
          │      ├── topsis.py            —  TOPSIS 多准则排名
          │      └── stacking.py          —  Stacking Ensemble（Top-N 模型集成）
-         └── 输出：optimization_results_v2/
-                   ├── model_comparison.csv
-                   ├── {model}/repeat_{i}/fold_{j}_model.pkl
-                   └── ensemble_stacking/stacking_ensemble_model.pkl
+         └── 输出：optimization_results_v3/runs/<run_id>/（v3 布局，详见 docs/results_v3_architecture.md）
+                   ├── selection/model_comparison_cv_topsis_simple.csv   # TOPSIS Score/Rank
+                   ├── selection/stacking_selected_models.json           # 入选基学习器
+                   ├── models/{model}/repeat_{i}/fold_{j}_model.pkl
+                   ├── ensembles/gpse/stacking_ensemble_model.pkl        # 最终 GPSE 模型
+                   └── run_manifest.json + README.md                     # 元数据与指路
 ```
 
 ---

@@ -171,7 +171,7 @@ def main(
     )
     if not results_dir_supplied and getattr(args, "out_prefix", None):
         # Run-specific default so concurrent pipeline invocations do not
-        # overwrite each other's results in the shared 'optimization_results_v2'.
+        # overwrite each other's results in a shared default results root.
         train_argv += ["--results_dir", f"{args.out_prefix}_results"]
     if args.preserve_vcf_snp_ids:
         # The convert stage consumed this flag; the train stage needs it too so

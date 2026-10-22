@@ -16,16 +16,21 @@ from __future__ import annotations
 
 from pathlib import Path
 
-# Summary tables merged across traits, relative to each trait's results
-# directory. Only the basename is kept for the merged output, so the
-# ``reports/`` entries must not collide with the top-level ones.
+# Summary tables merged across traits, as (v3 relative, legacy relative)
+# pairs resolved against each trait's results directory. The v3 location
+# wins; the legacy path keeps v2 run directories readable. Only the
+# basename is kept for the merged output, so the entries must not
+# collide on basename.
 SUMMARY_FILES = (
-    "model_comparison.csv",
-    "model_comparison_cv.csv",
-    "model_comparison_cv_topsis.csv",
-    "model_comparison_cv_topsis_simple.csv",
-    "reports/model_comparison_holdout.csv",
-    "reports/holdout_metrics.csv",
+    ("evaluation/model_comparison.csv", "model_comparison.csv"),
+    ("selection/model_comparison_cv.csv", "model_comparison_cv.csv"),
+    ("selection/model_comparison_cv_topsis.csv", "model_comparison_cv_topsis.csv"),
+    (
+        "selection/model_comparison_cv_topsis_simple.csv",
+        "model_comparison_cv_topsis_simple.csv",
+    ),
+    ("evaluation/model_comparison_holdout.csv", "reports/model_comparison_holdout.csv"),
+    ("evaluation/holdout_metrics.csv", "reports/holdout_metrics.csv"),
 )
 
 
@@ -45,10 +50,13 @@ def merge_trait_results(
 
     output_dir = Path(output_dir)
     written: list[Path] = []
-    for relative in SUMMARY_FILES:
+    for v3_relative, legacy_relative in SUMMARY_FILES:
         frames = []
         for name, results_dir in trait_dirs.items():
-            path = Path(results_dir) / relative
+            results_dir = Path(results_dir)
+            path = results_dir / v3_relative
+            if not path.exists():
+                path = results_dir / legacy_relative
             if not path.exists():
                 continue
             frame = pd.read_csv(path)
@@ -58,7 +66,7 @@ def merge_trait_results(
             continue
         merged = pd.concat(frames, ignore_index=True, sort=False)
         output_dir.mkdir(parents=True, exist_ok=True)
-        out_path = output_dir / Path(relative).name
+        out_path = output_dir / Path(v3_relative).name
         merged.to_csv(out_path, index=False)
         written.append(out_path)
     return written

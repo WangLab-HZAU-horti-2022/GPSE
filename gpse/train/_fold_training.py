@@ -23,6 +23,7 @@ from gpse.train._feature_selection import (
     make_model_artifact,
 )
 from gpse.train._model_pipeline import build_training_pipeline
+from gpse.train._cv_statistics import digest
 
 
 def _train_single_fold(
@@ -154,6 +155,8 @@ def _train_single_fold(
         # Store results
         fold_result = {
             "fold_idx": fold_idx,
+            "split_identifier": digest({"samples": X_train.index.astype(str).tolist(),
+                                        "train": train_idx.tolist(), "val": val_idx.tolist()}),
             "train_metrics": train_metrics,
             "val_metrics": val_metrics,
             "test_metrics": test_metrics,
@@ -246,7 +249,7 @@ def _calculate_fold_average_metrics(
             for split in ["train", "val", "test"]:
                 values = [r[f"{split}_metrics"][metric_name] for r in fold_results]
                 metrics[f"avg_{split}_{metric_name}"] = np.mean(values)
-                metrics[f"std_{split}_{metric_name}"] = np.std(values)
+                metrics[f"std_{split}_{metric_name}"] = np.std(values, ddof=1)
 
         # AUC metric
         if all("auc" in r["test_metrics"] for r in fold_results):
@@ -284,7 +287,7 @@ def _calculate_fold_average_metrics(
         for split in ["train", "val", "test"]:
             pearson_values = [r[f"{split}_metrics"]["pearson"] for r in fold_results]
             metrics[f"avg_{split}_pearson"] = np.mean(pearson_values)
-            metrics[f"std_{split}_pearson"] = np.std(pearson_values)
+            metrics[f"std_{split}_pearson"] = np.std(pearson_values, ddof=1)
 
         spearman_values = [r["test_metrics"]["spearman"] for r in fold_results]
         mse_values = [r["test_metrics"]["mse"] for r in fold_results]

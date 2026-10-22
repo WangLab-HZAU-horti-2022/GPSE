@@ -536,10 +536,12 @@ def gpse_train(
         geno_file: Genotype matrix file (CSV/Parquet, e.g. from gpse_convert).
         pheno_file: Phenotype file (CSV).
         target_trait: Target trait column name in the phenotype file.
-        results_dir: Output directory for results (default: optimization_results_v2).
+        results_dir: Output directory for results. When omitted, each run creates
+            optimization_results_v3/runs/<run_id>/; when supplied it is the run
+            directory itself (v3 categorized layout inside).
         models: Model names to train (default: config-defined set).
         trials: Optuna trials per model (default 100).
-        n_repeats: Repeated training iterations (default 100).
+        n_repeats: Repeated training iterations (default 50).
         n_jobs: Native thread count for numerical libraries (default 1).
         n_classes: Number of classes (required for classification).
         extra_args: Additional raw CLI flags, e.g. ["--use_default_params",

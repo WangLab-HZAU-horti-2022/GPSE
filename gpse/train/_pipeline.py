@@ -24,6 +24,8 @@ from gpse.utils.parallel import graceful_process_pool
 from gpse.train.stacking import StackingEnsemble
 from gpse.train._repeat_training import create_holdout_indices
 from gpse.train._results import write_result_bundle
+from gpse.train._cv_statistics import export_cv, runtime_provenance, validate_shared_splits
+from gpse.train.topsis import TOPSISEvaluator
 from gpse.utils.log_utils import shorten_path
 
 
@@ -39,7 +41,7 @@ def _run_model_task(predictor, model_name, X, y, cv_pheno_data, use_same_test_se
 
 
 def _save_split_manifest(
-    results_dir, X, train_indices, test_indices, task_type, random_seed, phenotype_scaler=None,
+    paths, X, train_indices, test_indices, task_type, random_seed, phenotype_scaler=None,
     split_metadata=None,
 ):
     manifest = {
@@ -47,25 +49,25 @@ def _save_split_manifest(
         "random_seed": random_seed,
         "n_train": int(len(train_indices)),
         "n_test": int(len(test_indices)),
-        "train_ids_file": "train_ids.txt",
-        "test_ids_file": "test_ids.txt",
+        "train_ids_file": str(paths.path("train_ids").relative_to(paths.run_dir)),
+        "test_ids_file": str(paths.path("test_ids").relative_to(paths.run_dir)),
         "phenotype_scaler": phenotype_scaler,
         **(split_metadata or {}),
     }
-    (results_dir / "train_ids.txt").write_text(
+    paths.ensure("train_ids").write_text(
         "\n".join(map(str, X.index[train_indices])) + "\n", encoding="utf-8"
     )
-    (results_dir / "test_ids.txt").write_text(
+    paths.ensure("test_ids").write_text(
         "\n".join(map(str, X.index[test_indices])) + "\n", encoding="utf-8"
     )
-    with open(results_dir / "split_manifest.json", "w", encoding="utf-8") as handle:
+    with paths.ensure("split_manifest").open("w", encoding="utf-8") as handle:
         json.dump(manifest, handle, indent=2)
 
 
-def _write_holdout_reports(results_dir, all_model_results, task_type, split_strategy):
+def _write_holdout_reports(paths, all_model_results, task_type, split_strategy):
     """Persist final hold-out metrics after all model/stacking choices are frozen."""
-    reports_dir = results_dir / "reports"
-    reports_dir.mkdir(parents=True, exist_ok=True)
+    evaluation_dir = paths.evaluation_dir
+    evaluation_dir.mkdir(parents=True, exist_ok=True)
     rows = []
     for model_name, result in all_model_results.items():
         row = {
@@ -98,19 +100,19 @@ def _write_holdout_reports(results_dir, all_model_results, task_type, split_stra
         rows.append(row)
 
     current = pd.DataFrame(rows)
-    csv_path = reports_dir / "model_comparison_holdout.csv"
+    csv_path = paths.ensure("holdout_comparison")
     if csv_path.exists():
         existing = pd.read_csv(csv_path)
         existing = existing[existing["split_strategy"] != split_strategy]
         current = pd.concat([existing, current], ignore_index=True, sort=False)
     current.to_csv(csv_path, index=False)
-    current.to_csv(reports_dir / "holdout_metrics.csv", index=False)
-    with open(reports_dir / "holdout_metrics.json", "w", encoding="utf-8") as handle:
+    current.to_csv(paths.ensure("holdout_metrics_csv"), index=False)
+    with paths.ensure("holdout_metrics_json").open("w", encoding="utf-8") as handle:
         json.dump(current.to_dict(orient="records"), handle, indent=2)
-    main_logger.info(f"Final hold-out reports saved to {shorten_path(reports_dir)}")
+    main_logger.info(f"Final hold-out reports saved to {shorten_path(evaluation_dir)}")
 
 
-def _write_topsis_final_predictions(results_dir, all_model_results, X, task_type):
+def _write_topsis_final_predictions(paths, all_model_results, X, task_type):
     """Persist hold-out predictions from the CV-TOPSIS top-ranked model.
 
     The best model is the rank-1 entry of ``model_comparison_cv_topsis_simple.csv``
@@ -119,10 +121,7 @@ def _write_topsis_final_predictions(results_dir, all_model_results, X, task_type
     majority-voted (classification). Values are converted back to the original
     phenotype scale when standardization was applied.
     """
-    reports_dir = results_dir / "reports"
-    reports_dir.mkdir(parents=True, exist_ok=True)
-
-    topsis_simple_path = results_dir / "model_comparison_cv_topsis_simple.csv"
+    topsis_simple_path = paths.path("topsis_simple")
     topsis_score = None
     if topsis_simple_path.exists():
         ranking = pd.read_csv(topsis_simple_path).sort_values("TOPSIS_Rank")
@@ -130,28 +129,12 @@ def _write_topsis_final_predictions(results_dir, all_model_results, X, task_type
         best_model = best_row["Model"]
         topsis_score = float(best_row["TOPSIS_Score"])
     else:
-        candidates = [
-            (
-                name,
-                result["training_selection"]["cv_mean"],
-                result["training_selection"]["cv_std"],
-            )
-            for name, result in all_model_results.items()
-            if "training_selection" in result
-        ]
-        if not candidates:
-            main_logger.warning(
-                "No training-selection CV results available; "
-                "skipping TOPSIS-based final predictions"
-            )
-            return None
-        candidates.sort(key=lambda item: (-item[1], item[2]))
-        best_model = candidates[0][0]
+        raise ValueError("Final predictions require a verified training-CV TOPSIS ranking")
 
     selection = all_model_results[best_model].get("training_selection", {})
     repeat_idx = int(selection.get("selected_repeat_idx", 0))
     predictions_file = (
-        results_dir / best_model / f"repeat_{repeat_idx + 1}" / "all_predictions.json"
+        paths.model_dir(best_model) / f"repeat_{repeat_idx + 1}" / "all_predictions.json"
     )
     if not predictions_file.exists():
         main_logger.warning(
@@ -178,15 +161,15 @@ def _write_topsis_final_predictions(results_dir, all_model_results, X, task_type
     else:
         predicted = predicted_stack.mean(axis=0)
 
-    split_manifest_path = results_dir / "split_manifest.json"
+    split_manifest_path = paths.path("split_manifest")
     if split_manifest_path.exists():
-        with open(split_manifest_path, encoding="utf-8") as handle:
+        with split_manifest_path.open(encoding="utf-8") as handle:
             scaler = json.load(handle).get("phenotype_scaler") or {}
         if scaler.get("applied"):
             observed = observed * scaler["std"] + scaler["mean"]
             predicted = predicted * scaler["std"] + scaler["mean"]
 
-    output_path = reports_dir / "final_predictions.csv"
+    output_path = paths.ensure("topsis_top1_predictions")
     pd.DataFrame(
         {
             "ID": X.index[indices].astype(str),
@@ -241,6 +224,26 @@ def run_all_models(
     Dict[str, Dict[str, Any]]
         Dictionary containing all model results.
     """
+    # Refuse reuse before loading data can write schemas, reports, or split manifests.
+    if (self.results_dir / "cv_run_manifest.json").exists() or any(
+            self.results_dir.rglob("repeat_results.json")) or any(
+            self.results_dir.rglob("model_comparison*.csv")):
+        raise FileExistsError("Results already exist; use a new results directory or offline reaggregation")
+    if getattr(self, "topsis_config", None):
+        criteria, types, weights = self.get_topsis_configuration()
+        expected = ["cv_mean", getattr(self, "cv_stability_metric", "cv_std_repeat")]
+        if criteria != expected or types != ["max", "min"] or weights != "0.8,0.2":
+            raise ValueError("TOPSIS config must use aggregated CV criteria and fixed weights 0.8,0.2")
+    self._cv_run_config = {"geno_file": str(geno_file), "pheno_file": str(pheno_file),
+                           "target_trait": target_trait,
+                           "models": models if models is not None else self.available_models,
+                           "use_stacking": use_stacking, "top_n_models": top_n_models,
+                           "stacking_cv_folds": cv_folds, "fixed_holdout": use_same_test_set}
+    provenance = runtime_provenance(self)
+    with (self.results_dir / "cv_run_manifest.json").open("x", encoding="utf-8") as handle:
+        json.dump(provenance, handle, indent=2)
+    if not use_same_test_set:
+        raise ValueError("Training-only selection requires a fixed holdout across repeats")
     X, y, pheno_data = self.load_data(geno_file, pheno_file, target_trait)
 
     fixed_test_indices = None
@@ -259,7 +262,7 @@ def run_all_models(
         if self.task_type == "regression" and self.standardize_phenotype:
             _, phenotype_scaler = self._standardize_phenotype(y.iloc[train_indices])
         _save_split_manifest(
-            self.results_dir,
+            self.paths,
             X,
             train_indices,
             fixed_test_indices,
@@ -286,6 +289,7 @@ def run_all_models(
     main_logger.info(f"Will run the following models: {', '.join(models)}")
 
     all_model_results = {}
+    model_failures = {}
     model_workers = min(self.max_parallel_jobs, len(models))
 
     if model_workers > 1:
@@ -315,6 +319,7 @@ def run_all_models(
                     all_model_results[model_name] = future.result()
                     main_logger.info(f"[{idx}/{len(models)}] Completed model: {model_name}")
                 except Exception as e:
+                    model_failures[model_name] = str(e)
                     main_logger.error(f"Model {model_name} execution failed: {str(e)}")
                     main_logger.error(traceback.format_exc())
     else:
@@ -328,73 +333,49 @@ def run_all_models(
                 )
                 all_model_results[model_name] = model_summary
             except Exception as e:
+                model_failures[model_name] = str(e)
                 main_logger.error(f"Model {model_name} execution failed: {str(e)}")
                 main_logger.error(traceback.format_exc())
 
     main_logger.info("=" * 50)
     main_logger.info("Model performance comparison before ensemble:")
+    if model_failures:
+        with (self.results_dir / "cv_model_failures.json").open("x") as handle:
+            json.dump({"excluded_models": model_failures,
+                       "policy": "incomplete_or_invalid_models_are_ineligible"}, handle, indent=2)
     if not all_model_results:
         raise RuntimeError(
             "All models failed to train; see the per-model errors above. "
             "No comparison, ensemble, or reports can be produced."
         )
-    create_comparison_table(all_model_results, self.results_dir, main_logger)
+    create_comparison_table(all_model_results, self.paths.evaluation_dir, main_logger)
 
     selected_models_for_stacking = None
-    if len(all_model_results) >= 2:
-        primary_label = "CV Accuracy" if self.task_type == "classification" else "CV Pearson"
-        cv_rows = [
-            {
-                "Model": name,
-                primary_label: result["training_selection"]["cv_mean"],
-                "CV Std": result["training_selection"]["cv_std"],
-            }
-            for name, result in all_model_results.items()
-            if "training_selection" in result
-        ]
-        cv_comparison = pd.DataFrame(cv_rows)
-        if not cv_comparison.empty:
-            cv_path = self.results_dir / "model_comparison_cv.csv"
-            topsis_path = self.results_dir / "model_comparison_cv_topsis.csv"
-            topsis_simple_path = self.results_dir / "model_comparison_cv_topsis_simple.csv"
-            cv_comparison.to_csv(cv_path, index=False)
-            try:
-                call_topsis_evaluator(
-                    comparison_csv=str(cv_path),
-                    output_csv=str(topsis_path),
-                    criteria=[primary_label, "CV Std"],
-                    criteria_types=["max", "min"],
-                    manual_weights="0.8,0.2",
-                    min_transform="neglog",
-                    simple_output=str(topsis_simple_path),
-                    logger=main_logger,
-                )
-                topsis_ranked_models = pd.read_csv(topsis_simple_path)["Model"].tolist()
-            except Exception as exc:
-                main_logger.warning(
-                    f"Training-only TOPSIS failed; falling back to CV mean/std ranking: {exc}"
-                )
-                cv_comparison = cv_comparison.sort_values(
-                    [primary_label, "CV Std"], ascending=[False, True]
-                )
-                topsis_ranked_models = cv_comparison["Model"].tolist()
-            if use_stacking:
-                selected_models_for_stacking = topsis_ranked_models[:top_n_models]
-                with open(self.results_dir / "stacking_selected_models.json", "w", encoding="utf-8") as handle:
-                    json.dump(
-                        {
-                            "selection_source": "train_only_cv",
-                            "criteria": [primary_label, "CV Std"],
-                            "selection_method": "TOPSIS (fallback: CV mean/std rank)",
-                            "selected_models": selected_models_for_stacking,
-                        },
-                        handle,
-                        indent=2,
-                    )
-                main_logger.info(
-                    "Selected stacking base models using training-only CV metrics: "
-                    f"{selected_models_for_stacking}"
-                )
+    model_repeats = {}
+    aggregates = {}
+    for name, result in all_model_results.items():
+        if "cv_aggregation" not in result:
+            raise ValueError(f"{name}: missing complete training-CV aggregation")
+        aggregates[name] = result["cv_aggregation"]
+        model_repeats[name] = [json.loads(path.read_text()) for path in
+                              (self.paths.models_dir / name).glob("repeat_*/repeat_results.json")]
+    validate_shared_splits(model_repeats)
+    export_cv(self.paths.selection_dir, model_repeats, aggregates, provenance)
+    stability_metric = getattr(self, "cv_stability_metric", "cv_std_repeat")
+    ranked = TOPSISEvaluator(main_logger).evaluate(
+        self.paths.selection_dir / "model_comparison_cv.csv",
+        self.paths.ensure("topsis_full"),
+        criteria=["cv_mean", stability_metric], criteria_types=["max", "min"],
+        manual_weights="0.8,0.2", min_transform="neglog",
+        simple_output=self.paths.ensure("topsis_simple"),
+    )
+    if use_stacking:
+        selected_models_for_stacking = ranked["Model"].tolist()[:top_n_models]
+        with self.paths.ensure("stacking_selected_models").open("x", encoding="utf-8") as handle:
+            json.dump({"selection_source": "train_only_cv", "accuracy_metric": "cv_mean",
+                       "stability_metric": stability_metric, "weight_method": "manual",
+                       "weights": [0.8, 0.2], "selection_method": "TOPSIS",
+                       "selected_models": selected_models_for_stacking}, handle, indent=2)
 
     if use_stacking and len(all_model_results) >= 2:
         try:
@@ -428,7 +409,8 @@ def run_all_models(
             }
 
             stacking_model = StackingEnsemble(
-                base_models_dir=str(self.results_dir),
+                base_models_dir=str(self.paths.models_dir),
+                output_dir=str(self.paths.ensembles_gpse_dir),
                 model_factory=lambda name: self.create_model(name, selected_params[name]),
                 top_n_models=top_n_models,
                 cv_folds=cv_folds,
@@ -465,17 +447,17 @@ def run_all_models(
 
             main_logger.info("=" * 50)
             main_logger.info("Model performance comparison after ensemble:")
-            create_comparison_table(all_model_results, self.results_dir, main_logger)
+            create_comparison_table(all_model_results, self.paths.evaluation_dir, main_logger)
 
         except Exception as e:
             main_logger.error(f"Stacking ensemble execution failed: {str(e)}")
             main_logger.error(traceback.format_exc())
 
     _write_holdout_reports(
-        self.results_dir, all_model_results, self.task_type, self.split_strategy
+        self.paths, all_model_results, self.task_type, self.split_strategy
     )
     _write_topsis_final_predictions(
-        self.results_dir, all_model_results, X, self.task_type
+        self.paths, all_model_results, X, self.task_type
     )
     report_paths = write_result_bundle(
         self.results_dir,
@@ -487,9 +469,59 @@ def run_all_models(
         feature_count=X.shape[1],
         feature_selection=self.feature_selection_config.as_dict(),
         genotype_imputation=self.genotype_imputation_config.as_dict(),
+        paths=self.paths,
     )
     main_logger.info(
         "Result bundle saved: "
         + ", ".join(shorten_path(path) for path in report_paths.values())
     )
+    _finalize_run_outputs(self, use_stacking, target_trait, len(all_model_results))
     return all_model_results
+
+
+def _finalize_run_outputs(
+    self, use_stacking: bool, target_trait: str, model_count: int
+) -> None:
+    """Best-effort v3 metadata: selection summary, manifest, README, index.
+
+    Pure output-layer bookkeeping. Any failure is logged and swallowed so
+    training results and exception semantics stay exactly as before.
+    """
+    try:
+        from gpse.output.index import append_run_index, rebuild_runs_summary
+        from gpse.output.manifest import finalize_run_manifest, read_run_manifest
+        from gpse.output.readme import write_run_readme
+        from gpse.output.registry import collect_artifacts
+        from gpse.output.summary import write_selection_summary
+
+        paths = self.paths
+        write_selection_summary(paths, self.task_type)
+        write_run_readme(paths, trait=target_trait, task_type=self.task_type)
+
+        stacking_model = paths.ensembles_gpse_dir / "stacking_ensemble_model.pkl"
+        if stacking_model.exists():
+            stacking_status = "completed"
+        elif not use_stacking:
+            stacking_status = "not_requested"
+        elif model_count < 2:
+            stacking_status = "skipped_insufficient_models"
+        else:
+            stacking_status = "failed"
+        selection_status = (
+            "completed" if paths.resolve("topsis_simple") is not None else "unknown"
+        )
+        artifacts = collect_artifacts(paths)
+        finalize_run_manifest(
+            paths,
+            run_status="completed",
+            selection_status=selection_status,
+            stacking_status=stacking_status,
+            artifact_index=artifacts,
+        )
+        if paths.root_dir is not None:
+            manifest = read_run_manifest(paths)
+            if manifest:
+                append_run_index(paths.root_dir, manifest, paths.run_dir)
+                rebuild_runs_summary(paths.root_dir)
+    except Exception as exc:  # metadata must never break a training run
+        main_logger.warning(f"Run metadata finalization skipped: {exc}")

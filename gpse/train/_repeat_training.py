@@ -19,6 +19,7 @@ from concurrent.futures import as_completed
 
 from loguru import logger as main_logger
 
+from gpse.train._cv_statistics import aggregate_cv, runtime_provenance
 from gpse.config import ModelConstants
 from gpse.config.constants import NumpyEncoder
 from gpse.utils.genomic_utils import (
@@ -162,6 +163,9 @@ def select_repeat_by_train_cv(
         std = float(result.get(std_key, float("inf")))
         return (-mean, std, int(result.get("repeat_idx", repeat_idx)))
 
+    if any(not np.isfinite(float(r[mean_key])) or not np.isfinite(float(r[std_key]))
+           for r in all_repeat_results):
+        raise ValueError("Best-repeat diagnostic requires finite validation metrics")
     selected_idx, selected_repeat = min(enumerate(all_repeat_results), key=ranking_key)
     return selected_idx, selected_repeat, {
         "metric": mean_key,
@@ -221,7 +225,7 @@ def train_and_evaluate_model_for_repeat(
             f"<yellow>- Repeat {repeat_idx + 1}/{self.n_repeats}</yellow>: starting training"
         )
 
-    repeat_dir = create_repeat_result_directory(self.results_dir, model_name, repeat_idx)
+    repeat_dir = create_repeat_result_directory(self.paths.models_dir, model_name, repeat_idx)
     if test_indices is None:
         train_indices, test_indices = create_holdout_indices(
             y,
@@ -340,6 +344,9 @@ def train_and_evaluate_model_for_repeat(
     repeat_results = {
         "model_name": model_name,
         "repeat_idx": repeat_idx,
+        "split_seed": repeat_seed,
+        "expected_folds": self.n_splits,
+        "expected_repeats": self.n_repeats,
         "params": params,
         "fold_results": fold_results,
         "avg_training_time": avg_metrics.get("avg_training_time", 0.0),
@@ -399,11 +406,14 @@ def run_model_multiple_repeats(
         f"Starting {self.n_repeats} repeated training runs for model {model_name}"
     )
 
-    model_dir = create_model_result_directory(self.results_dir, model_name)
+    if not use_same_test_set:
+        raise ValueError("Repeated-CV model selection requires a fixed holdout")
+    model_dir = create_model_result_directory(self.paths.models_dir, model_name)
 
     if use_same_test_set and test_indices is None:
         _, test_indices = create_holdout_indices(
-            y, self.test_size, self.random_seed, self.task_type
+            y, self.test_size, self.random_seed, self.task_type,
+            X=X, split_strategy=self.split_strategy, structure_clusters=self.structure_clusters,
         )
         main_logger.info(f"All repeats will use the same test set (size: {len(test_indices)})")
 
@@ -465,12 +475,31 @@ def run_model_multiple_repeats(
                 main_logger.error(f"Repeat {repeat_idx + 1} execution failed: {str(e)}")
 
     if all_repeat_results:
+        all_repeat_results.sort(key=lambda r: r["repeat_idx"])
+        try:
+            aggregation = aggregate_cv(
+                all_repeat_results, self.n_repeats, self.n_splits, self.task_type,
+                getattr(self, "cv_stability_metric", "cv_std_repeat"),
+            )
+        except (ValueError, KeyError, TypeError) as exc:
+            import json
+            with (model_dir / "cv_failure.json").open("x") as handle:
+                json.dump({"model": model_name, "error": str(exc),
+                           "selection_eligible": False,
+                           "completed_repeats": len(all_repeat_results),
+                           "expected_repeats": self.n_repeats,
+                           "completed_folds": sum(len(r.get("fold_results", [])) for r in all_repeat_results),
+                           "expected_folds_per_repeat": self.n_splits,
+                           "invalid_score_policy": "reject_model_no_partial_selection"}, handle, indent=2)
+            raise
+        provenance = runtime_provenance(self)
+        aggregation.update({key: provenance[key] for key in ("code_version", "config_version")})
         summary = calculate_repeat_statistics(all_repeat_results, self.task_type)
         selected_repeat_idx, selected_repeat, selection = select_repeat_by_train_cv(
             all_repeat_results, self.task_type
         )
         main_logger.info(
-            "Selected representative/deployment parameters from train-only CV: "
+            "Diagnostic best repeat / parameter source (not model-ranking metrics): "
             f"Repeat {selected_repeat_idx + 1}, {selection['metric']}="
             f"{selection['cv_mean']:.{ModelConstants.metrics_precision}f} "
             f"(±{selection['cv_std']:.{ModelConstants.metrics_precision}f})"
@@ -478,7 +507,7 @@ def run_model_multiple_repeats(
 
         if self.task_type == "classification":
             repeat_info = {
-                "repeat_idx": int(selected_repeat_idx),
+                "repeat_idx": int(selected_repeat["repeat_idx"]),
                 "selection_source": "train_only_cv",
                 "cv_metric": selection["metric"],
                 "cv_mean": selection["cv_mean"],
@@ -489,7 +518,7 @@ def run_model_multiple_repeats(
             }
         else:
             repeat_info = {
-                "repeat_idx": int(selected_repeat_idx),
+                "repeat_idx": int(selected_repeat["repeat_idx"]),
                 "selection_source": "train_only_cv",
                 "cv_metric": selection["metric"],
                 "cv_mean": selection["cv_mean"],
@@ -499,18 +528,26 @@ def run_model_multiple_repeats(
                 ),
             }
 
+        # Freeze training-only parameters, then refit on the complete training partition.
+        # Holdout labels never enter saved models or fitted preprocessing state.
+        excluded = np.asarray(selected_repeat["test_indices"])
+        fit_indices = np.setdiff1d(np.arange(len(X)), excluded)
+        fit_X, fit_y = X.iloc[fit_indices], y.iloc[fit_indices]
+        repeat_info.update(artifact_role="train_partition_refit", trained_on="holdout_training_partition",
+                           performance_belongs_to_saved_model=False,
+                           parameter_source="diagnostic_best_train_cv_repeat")
         model_path = self._save_representative_model(
-            model_name, selected_repeat["params"], X, y, model_dir, repeat_info
+            model_name, selected_repeat["params"], fit_X, fit_y, model_dir, repeat_info
         )
         deployment_path = self._save_deployment_ensemble(
-            model_name, selected_repeat["params"], X, y, model_dir
+            model_name, selected_repeat["params"], fit_X, fit_y, model_dir
         )
 
         if model_path:
             main_logger.info(f"Representative model saved to {shorten_path(model_path)}")
             if self.task_type == "classification":
                 summary["representative_model"] = {
-                    "repeat_idx": int(selected_repeat_idx),
+                    "repeat_idx": int(selected_repeat["repeat_idx"]),
                     "selection_source": "train_only_cv",
                     "cv_metric": selection["metric"],
                     "cv_mean": selection["cv_mean"],
@@ -522,7 +559,7 @@ def run_model_multiple_repeats(
                 }
             else:
                 summary["representative_model"] = {
-                    "repeat_idx": int(selected_repeat_idx),
+                    "repeat_idx": int(selected_repeat["repeat_idx"]),
                     "selection_source": "train_only_cv",
                     "cv_metric": selection["metric"],
                     "cv_mean": selection["cv_mean"],
@@ -533,12 +570,15 @@ def run_model_multiple_repeats(
                     "model_path": model_path,
                 }
 
+        if "representative_model" in summary:
+            summary["representative_model"].update(repeat_info)
         if deployment_path:
             summary["deployment_ensemble"] = {
                 "path": deployment_path,
                 "n_members": self.n_splits,
-                "trained_on": "all_samples",
+                "trained_on": "holdout_training_partition",
                 "performance_source": "holdout_fold_ensemble",
+                "performance_belongs_to_saved_model": False,
             }
         model_name_summary = summary["model_name"]
         n_repeats = summary["n_repeats"]
@@ -593,13 +633,16 @@ def run_model_multiple_repeats(
             )
 
         summary["training_selection"] = {
-            "selected_repeat_idx": int(selected_repeat_idx),
+            "selected_repeat_idx": int(selected_repeat["repeat_idx"]),
             "best_params": selected_repeat["params"],
             "cv_metric": selection["metric"],
             "cv_mean": selection["cv_mean"],
             "cv_std": selection["cv_std"],
             "source": "train_only_cv",
+            "parameter_source": "diagnostic_best_train_cv_repeat",
+            **aggregation,
         }
+        summary["cv_aggregation"] = aggregation
         summary["phenotype_standardized"] = bool(
             self.task_type == "regression" and self.standardize_phenotype
         )
@@ -622,7 +665,7 @@ def run_model_multiple_repeats(
         return summary
     else:
         main_logger.error(f"Model {model_name} failed on all repeats")
-        return {"model_name": model_name, "n_repeats": 0, "error": "All repeats failed"}
+        raise ValueError(f"{model_name}: all repeats failed; CV selection is unavailable")
 
 
 def _run_repeat_task(self, model_name, X, y, repeat_idx, test_indices, cv_pheno_data):

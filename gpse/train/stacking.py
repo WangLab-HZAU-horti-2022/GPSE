@@ -217,14 +217,5 @@ class StackingEnsemble:
                     metrics["auc"] = 0.0
             return metrics
 
-        pearson = pearsonr(y_true, y_pred)[0] if len(y_true) > 1 else 0.0
-        spearman = spearmanr(y_true, y_pred)[0] if len(y_true) > 1 else 0.0
-        mse = mean_squared_error(y_true, y_pred)
-        return {
-            "pearson": float(0.0 if np.isnan(pearson) else pearson),
-            "spearman": float(0.0 if np.isnan(spearman) else spearman),
-            "r2": float(r2_score(y_true, y_pred)),
-            "mse": float(mse),
-            "rmse": float(np.sqrt(mse)),
-            "mae": float(mean_absolute_error(y_true, y_pred)),
-        }
+        from gpse.utils.genomic_utils import calculate_metrics
+        return calculate_metrics(y_true, y_pred)

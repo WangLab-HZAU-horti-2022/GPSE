@@ -1,0 +1,105 @@
+{
+  "checked_at": "2026-10-22T02:59:02.168089+00:00",
+  "scope": "exact result paths referenced by project files; no historical runs inspected",
+  "paths": [
+    {
+      "path": "/data/jzhang/project/Temp/gpse_26.6.4_test/gpse_new_validation/3species/cucumber_batch",
+      "referenced_by": [
+        "tests/validation/cucumber_batch_config.yaml"
+      ],
+      "is_directory": false,
+      "exists": false
+    },
+    {
+      "path": "/data/jzhang/project/Temp/gpse_26.6.4_test/gpse_new_validation/magic/magic_3d_batch",
+      "referenced_by": [
+        "tests/validation/magic_3d_batch_config.yaml"
+      ],
+      "is_directory": false,
+      "exists": false
+    },
+    {
+      "path": "/data/jzhang/project/Temp/gpse_26.6.4_test/gpse_new_validation/magic/magic_gwas_batch",
+      "referenced_by": [
+        "tests/validation/magic_gwas_batch_config.yaml"
+      ],
+      "is_directory": false,
+      "exists": false
+    },
+    {
+      "path": "/data/jzhang/project/Temp/gpse_26.6.4_test/gpse_new_validation/6species/maize_batch",
+      "referenced_by": [
+        "tests/validation/maize_batch_config.yaml"
+      ],
+      "is_directory": false,
+      "exists": false
+    },
+    {
+      "path": "/data/jzhang/project/Temp/gpse_26.6.4_test/gpse_new_validation/3species/melon_batch",
+      "referenced_by": [
+        "tests/validation/melon_batch_config.yaml"
+      ],
+      "is_directory": false,
+      "exists": false
+    },
+    {
+      "path": "/data/jzhang/project/Temp/gpse_26.6.4_test/gpse_new_validation/6species/rice_batch",
+      "referenced_by": [
+        "tests/validation/rice_batch_config.yaml"
+      ],
+      "is_directory": false,
+      "exists": false
+    },
+    {
+      "path": "/data/jzhang/project/Temp/gpse_26.6.4_test/gpse_new_validation/6species/sorghum_batch",
+      "referenced_by": [
+        "tests/validation/sorghum_batch_config.yaml"
+      ],
+      "is_directory": false,
+      "exists": false
+    },
+    {
+      "path": "/data/jzhang/project/Temp/gpse_26.6.4_test/gpse_new_validation/6species/soy_batch",
+      "referenced_by": [
+        "tests/validation/soy_batch_config.yaml"
+      ],
+      "is_directory": false,
+      "exists": false
+    },
+    {
+      "path": "/data/jzhang/project/Temp/gpse_26.6.4_test/gpse_new_validation/6species/spruce_batch",
+      "referenced_by": [
+        "tests/validation/spruce_batch_config.yaml"
+      ],
+      "is_directory": false,
+      "exists": false
+    },
+    {
+      "path": "/data/jzhang/project/Temp/gpse_26.6.4_test/gpse_new_validation/6species/switchgrass_batch",
+      "referenced_by": [
+        "tests/validation/switchgrass_batch_config.yaml"
+      ],
+      "is_directory": false,
+      "exists": false
+    },
+    {
+      "path": "/data/jzhang/project/Temp/gpse_26.6.4_test/gpse_new_validation/3species/watermelon_batch",
+      "referenced_by": [
+        "tests/validation/watermelon_batch_config.yaml"
+      ],
+      "is_directory": false,
+      "exists": false
+    },
+    {
+      "path": "/data/jzhang/project/Temp/gpse_26.6.4_test/gpse_paper_data_res_figure/figure_2",
+      "referenced_by": [
+        "docs/26.10.22/question_1.md"
+      ],
+      "is_directory": false,
+      "exists": false
+    }
+  ],
+  "available_paths": 0,
+  "workspace_repeat_results_files": 0,
+  "unavailable_does_not_mean_requires_retraining": true
+}

@@ -1,83 +1,13 @@
-# TOPSIS multi-criteria model ranking configuration.
-#
-# Each task type defines a list of criteria. Each criterion has:
-#   name   — must match a column in model_comparison.csv
-#   type   — "max" (higher is better) or "min" (lower is better)
-#   weight — relative importance; criteria with weight 0 are included for
-#            reference but do not affect the ranking.
-#
-# Weights are normalised internally (only non-zero weights matter).
-# Users can override this file with: gpse train --topsis_config my_topsis.yaml
-
+# Formal model selection uses all training-only repeats. Holdout is reporting-only.
+# Weights stay fixed at [0.8, 0.2]; neglog with epsilon=1e-12, then L2 normalization.
+# Explicit alternative: --cv_stability_metric cv_std_within or cv_std_all_folds.
+# cv_std_repeat is descriptive SD (ddof=1), never a standard error or confidence interval.
 tasks:
   classification:
     criteria:
-      - name: "Test Accuracy"
-        type: max
-        weight: 0.8
-      - name: "Test Accuracy (std)"
-        type: min
-        weight: 0.2
-      - name: "Test F1"
-        type: max
-        weight: 0
-      - name: "Test F1 (std)"
-        type: min
-        weight: 0
-      - name: "Test AUC"
-        type: max
-        weight: 0
-      - name: "Test AUC (std)"
-        type: min
-        weight: 0
-      - name: "Validation Accuracy"
-        type: max
-        weight: 0
-      - name: "Validation Accuracy (std)"
-        type: min
-        weight: 0
-      - name: "Ensemble Accuracy"
-        type: max
-        weight: 0
-      - name: "Ensemble Accuracy (std)"
-        type: min
-        weight: 0
-      - name: "Training Time (s)"
-        type: min
-        weight: 0
-
+      - {name: cv_mean, type: max, weight: 0.8}
+      - {name: cv_std_repeat, type: min, weight: 0.2}
   regression:
     criteria:
-      - name: "Test Pearson"
-        type: max
-        weight: 0.8
-      - name: "Test Pearson (std)"
-        type: min
-        weight: 0.2
-      - name: "Test Spearman"
-        type: max
-        weight: 0
-      - name: "Test Spearman (std)"
-        type: min
-        weight: 0
-      - name: "Validation Pearson"
-        type: max
-        weight: 0
-      - name: "Validation Pearson (std)"
-        type: min
-        weight: 0
-      - name: "Test MSE"
-        type: min
-        weight: 0
-      - name: "Test MSE (std)"
-        type: min
-        weight: 0
-      - name: "Ensemble Pearson"
-        type: max
-        weight: 0
-      - name: "Ensemble Pearson (std)"
-        type: min
-        weight: 0
-      - name: "Training Time (s)"
-        type: min
-        weight: 0
+      - {name: cv_mean, type: max, weight: 0.8}
+      - {name: cv_std_repeat, type: min, weight: 0.2}
