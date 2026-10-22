@@ -263,7 +263,10 @@ class GenomicPredictorV2:
 
         # Create logs directory
         self.logs_dir = self.results_dir / ModelConstants.default_logs_dir
-        self.logs_dir.mkdir(exist_ok=True, parents=True)
+        try:
+            self.logs_dir.mkdir(exist_ok=True, parents=True)
+        except OSError:
+            pass  # Logging setup reports the error; computation remains available.
 
         # Generate timestamped log filename
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -273,7 +276,7 @@ class GenomicPredictorV2:
         global main_logger
         main_logger = logger_init(
             logger_name=str(self.logs_dir / self.main_log_filename),
-            log_level="INFO",
+            log_level=None,
         )
 
         # Initialize model optimizer

@@ -22,26 +22,12 @@ from gpse.train.workflow import (
     _log_stage,
     _show_version,
 )
-from gpse.utils.paralle import derive_parallelism_from_threads, validate_parallelism
+from gpse.utils.parallel import derive_parallelism_from_threads, validate_parallelism
 
 try:
     from rich_argparse import RichHelpFormatter
 except ImportError:  # pragma: no cover
     RichHelpFormatter = argparse.HelpFormatter
-
-try:
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.text import Text
-
-    _RICH_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    _RICH_AVAILABLE = False
-    Console = None
-    Panel = None
-    Text = None
-
-_CONFIG_CONSOLE = Console(stderr=True) if _RICH_AVAILABLE else None
 
 
 def _short_path(value: object) -> str:
@@ -57,11 +43,6 @@ def _short_path(value: object) -> str:
     return text
 
 
-def _append_config_line(text, label: str, value: object) -> None:
-    text.append(f"  • {label:<13}: ", style="dim")
-    text.append(f"{value}\n", style="white")
-
-
 def _write_config_to_log(args) -> None:
     ns = vars(args)
     main_logger.debug("=== GPSE Configuration ===")
@@ -73,78 +54,14 @@ def _write_config_to_log(args) -> None:
 
 def _log_config(args) -> None:
     """Pretty-print the active GPSE configuration."""
-    ns = vars(args)
-
-    if not _RICH_AVAILABLE:
-        main_logger.info(f"Target Trait: {ns.get('target_trait')} ({ns.get('task_type')})")
-        main_logger.info(f"Genotype: {_short_path(ns.get('geno_file'))}")
-        main_logger.info(f"Phenotype: {_short_path(ns.get('pheno_file'))}")
-        _write_config_to_log(args)
-        return
-
-    text = Text()
-    text.append("\n[ Data ]\n", style="bold cyan")
-    _append_config_line(
-        text,
-        "Target Trait",
-        f"{ns.get('target_trait')} ({ns.get('task_type')})",
+    summary = (
+        f"GPSE | {args.target_trait} ({args.task_type}) | "
+        f"models={', '.join(args.models) if args.models else 'all'} | "
+        f"training CV={args.n_repeats} repeats × {args.n_splits} folds | "
+        f"Holdout={args.test_size:g} | Stacking={args.use_stacking}\n"
+        f"n_jobs={args.n_jobs}, model_workers={args.max_workers}, repeat_workers={args.repeat_workers}"
     )
-    _append_config_line(text, "Genotype", _short_path(ns.get("geno_file")))
-    _append_config_line(text, "Phenotype", _short_path(ns.get("pheno_file")))
-    if ns.get("n_classes") is not None:
-        _append_config_line(text, "Classes", ns.get("n_classes"))
-    if ns.get("standardize_phenotype"):
-        _append_config_line(text, "Standardize", ns.get("standardize_phenotype"))
-
-    text.append("\n[ Training & CV ]\n", style="bold cyan")
-    _append_config_line(
-        text,
-        "Strategy",
-        (
-            f"Train_Folds={ns.get('n_splits')}, Repeats={ns.get('n_repeats')}, "
-            f"Stacking_CV={ns.get('cv_folds')}, Test_Size={ns.get('test_size')}"
-        ),
-    )
-    _append_config_line(
-        text,
-        "Models",
-        (
-            f"Trials={ns.get('trials')}, Top_N={ns.get('top_n_models')}, "
-            f"Stacking={ns.get('use_stacking')}"
-        ),
-    )
-    _append_config_line(
-        text,
-        "Seed",
-        f"{ns.get('random_seed')} | Patience: {ns.get('patience')}",
-    )
-    if ns.get("models"):
-        _append_config_line(text, "Selected", ", ".join(ns.get("models")))
-
-    text.append("\n[ System ]\n", style="bold cyan")
-    _append_config_line(
-        text,
-        "Threads",
-        (
-            f"n_jobs={ns.get('n_jobs')}, model_workers={ns.get('max_workers')}, "
-            f"repeat_workers={ns.get('repeat_workers')}"
-        ),
-    )
-    _append_config_line(text, "Output Dir", _short_path(ns.get("results_dir")))
-
-    if ns.get("enable_preprocess") or ns.get("preprocess_only"):
-        text.append("\n[ Preprocess ]\n", style="bold cyan")
-        _append_config_line(text, "Prefix", _short_path(ns.get("preprocess_prefix")))
-        _append_config_line(text, "VCF", _short_path(ns.get("vcf_file")))
-        _append_config_line(text, "BFILE", _short_path(ns.get("bfile")))
-        _append_config_line(text, "Raw Pheno", _short_path(ns.get("raw_pheno_file")))
-        if ns.get("preserve_vcf_snp_ids"):
-            _append_config_line(text, "SNP IDs", "VCF default IDs (compatibility mode)")
-
-    _CONFIG_CONSOLE.print(
-        Panel(text, title="[bold]GPSE Configuration[/bold]", border_style="cyan", expand=False)
-    )
-    _write_config_to_log(args)
+    main_logger.bind(console_summary=True).info(summary)
 
 
 def _resolve_model_count(args: argparse.Namespace) -> int:
@@ -182,20 +99,22 @@ def _apply_threads_budget(args: argparse.Namespace) -> None:
         n_jobs=args.n_jobs,
         max_workers=args.max_workers,
         repeat_workers=args.repeat_workers,
+        explicit=getattr(args, "_explicit_parallel", set()),
     )
 
-    effective = args.n_jobs * args.max_workers * args.repeat_workers
-    main_logger.info(
-        f"--threads {args.threads} requested; derived parallelism: "
-        f"n_jobs={args.n_jobs}, max_workers={args.max_workers}, "
-        f"repeat_workers={args.repeat_workers} "
-        f"(models={n_models}, repeats={args.n_repeats}, effective={effective})"
+    capacity = args.n_jobs * args.max_workers * args.repeat_workers
+    model_slots = min(args.max_workers, n_models)
+    repeat_slots = min(args.repeat_workers, args.n_repeats) if args.optuna_per_repeat else 1
+    main_logger.bind(console_summary=True).info(
+        f"--threads {args.threads}: n_jobs={args.n_jobs}, max_workers={args.max_workers}, "
+        f"repeat_workers={args.repeat_workers}; configured capacity={capacity}, "
+        f"training task ceiling={model_slots * repeat_slots}, "
+        f"thread capacity ceiling={model_slots * repeat_slots * args.n_jobs}. "
+        "These are upper bounds, not measured CPU concurrency."
     )
-    if effective < args.threads:
-        main_logger.warning(
-            f"Effective parallelism ({effective}) is below the --threads target "
-            f"({args.threads}). Increase --n_repeats or explicitly set "
-            "--n_jobs / --max_workers / --repeat_workers if you need more cores."
+    if args.repeat_workers > 1 and not args.optuna_per_repeat:
+        main_logger.bind(console_summary=True).info(
+            "Repeats run sequentially while repeat-1 parameters are frozen (optuna_per_repeat=False)."
         )
 
 
@@ -232,8 +151,13 @@ def main(
             _show_version()
             return 0
 
-        _configure_logging(args.log_level)
+        _configure_logging(args.log_level, args.verbosity)
 
+        if args.models:
+            unique = list(dict.fromkeys(args.models))
+            if len(unique) != len(args.models):
+                main_logger.warning("Duplicate model names removed; each model will execute once")
+            args.models = unique
         _apply_threads_budget(args)
 
         try:
@@ -445,6 +369,15 @@ def main(
             feature_id_mode="vcf" if args.preserve_vcf_snp_ids else None,
         )
 
+        predictor.cli_config = {key: sorted(value) if isinstance(value, set) else value
+                                for key, value in vars(args).items()}
+        _write_config_to_log(args)
+        predictor.console_verbosity = args.verbosity
+        predictor.progress = args.progress
+        main_logger.bind(console_summary=True).info(
+            f"Run: {output_paths.run_id} | Output: {_short_path(output_paths.run_dir)} | "
+            "Logs: logs/ (DEBUG text + events.jsonl)"
+        )
         try:
             predictor.run_all_models(
                 geno_file=processed_geno_file,
@@ -465,9 +398,15 @@ def main(
                 pass
             raise
         return 0
+    except ValueError as exc:
+        main_logger.error(str(exc))
+        return 1
     except KeyboardInterrupt:
         main_logger.warning("Training interrupted by user (Ctrl+C).")
         return 130
+    finally:
+        from gpse.utils.log_utils import set_training_verbosity
+        set_training_verbosity(None)
 
 
 if __name__ == "__main__":

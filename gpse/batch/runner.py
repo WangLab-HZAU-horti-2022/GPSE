@@ -167,6 +167,7 @@ def _dry_run_trait_summary(argv: list[str]) -> list[str]:
             n_jobs=n_jobs,
             max_workers=max_workers,
             repeat_workers=repeat_workers,
+            explicit=getattr(args, "_explicit_parallel", set()),
         )
 
     lines = [

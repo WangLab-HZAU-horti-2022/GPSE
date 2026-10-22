@@ -120,6 +120,7 @@ def derive_parallelism_from_threads(
     n_jobs: int = 1,
     max_workers: int = 1,
     repeat_workers: int = 1,
+    explicit: set[str] | None = None,
 ) -> tuple[int, int, int]:
     """Derive ``(n_jobs, max_workers, repeat_workers)`` from a total thread budget.
 
@@ -127,7 +128,7 @@ def derive_parallelism_from_threads(
     then repeat-level parallelism, and finally recycles any leftover budget
     into ``n_jobs``. Values that are still at their argparse defaults (``1``)
     are treated as "not explicitly set" and are overridden; non-default values
-    are preserved.
+    are preserved. ``explicit`` also preserves explicitly supplied values of 1.
 
     Parameters
     ----------
@@ -161,22 +162,25 @@ def derive_parallelism_from_threads(
     if n_repeats < 1:
         raise ValueError(f"n_repeats must be >= 1, got {n_repeats}")
 
+    if min(n_jobs, max_workers, repeat_workers) < 1:
+        raise ValueError("Parallel worker and thread counts must be positive")
+    explicit = explicit or set()
     derived_n_jobs = n_jobs
     derived_max_workers = max_workers
     derived_repeat_workers = repeat_workers
 
-    if max_workers == 1:
+    if max_workers == 1 and "max_workers" not in explicit:
         derived_max_workers = min(n_models, threads)
 
     # Budget left for repeats inside each model, accounting for n_jobs.
     per_model_budget = threads // derived_max_workers
-    if repeat_workers == 1:
+    if repeat_workers == 1 and "repeat_workers" not in explicit:
         derived_repeat_workers = max(1, min(n_repeats, per_model_budget // derived_n_jobs))
 
     # Give any leftover budget to per-worker threads so the --threads target
     # is actually used (e.g. threads=80, 15 models, 2 repeats would otherwise
     # only use 15 * 2 = 30 workers and waste the remaining cores).
-    if n_jobs == 1:
+    if n_jobs == 1 and "n_jobs" not in explicit:
         used = derived_max_workers * derived_repeat_workers
         derived_n_jobs = max(1, threads // used)
 
@@ -228,24 +232,25 @@ def graceful_process_pool(
     )
     try:
         yield executor
-    except KeyboardInterrupt:
-        _log(
-            logger,
-            "warning",
-            "Interrupt received (Ctrl+C); shutting down worker processes...",
-        )
+    except BaseException as exc:
+        if isinstance(exc, KeyboardInterrupt):
+            _log(logger, "warning", "Interrupt received (Ctrl+C); shutting down worker processes...")
+        # shutdown(wait=False) clears _processes. Save handles first so Ctrl+C
+        # actually stops running fits instead of hanging at interpreter exit.
+        workers = list((getattr(executor, "_processes", None) or {}).values())
         executor.shutdown(wait=False, cancel_futures=True)
-        _terminate_executor_workers(executor)
+        _terminate_executor_workers(executor, workers=workers)
         raise
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
-        _terminate_executor_workers(executor)
+    else:
+        # Normal completion also flushes worker event/log queues before returning.
+        executor.shutdown(wait=True, cancel_futures=True)
 
 
-def _terminate_executor_workers(executor: ProcessPoolExecutor) -> None:
+def _terminate_executor_workers(executor: ProcessPoolExecutor, workers=None) -> None:
     """Best-effort termination of any worker processes still alive."""
     try:
-        workers = list(getattr(executor, "_processes", {}).values())
+        if workers is None:
+            workers = list((getattr(executor, "_processes", None) or {}).values())
     except Exception:
         return
 

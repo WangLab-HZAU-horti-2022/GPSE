@@ -7,6 +7,7 @@ Repeat Training Module
 Coordinates training and evaluation for individual repeats, including parallel execution.
 """
 
+from gpse.utils.training_monitor import observed, configure_worker, get_client_config, init_client
 import os
 import traceback
 import numpy as np
@@ -30,16 +31,17 @@ from gpse.utils.genomic_utils import (
     create_model_result_directory,
     calculate_repeat_statistics,
 )
-from gpse.utils.log_utils import logger_init, setup_subprocess_logging, collect_subprocess_logs, shorten_path
+from gpse.utils.log_utils import collect_subprocess_logs, shorten_path
 from gpse.utils.parallel import graceful_process_pool
 
 
-def _init_worker_threads(n_threads: int) -> None:
+def _init_worker_threads(n_threads: int, monitor_config=None) -> None:
     """Initializer for ProcessPoolExecutor workers to enforce thread limits.
 
     Sets all 6 BLAS/OpenMP environment variables BEFORE any numpy/scipy
     imports happen in the child process (spawn context re-imports modules).
     """
+    init_client(monitor_config)
     from gpse.config import ModelConstants
     for _env_var in ModelConstants.thread_env_vars:
         os.environ[_env_var] = str(n_threads)
@@ -174,6 +176,7 @@ def select_repeat_by_train_cv(
     }
 
 
+@observed("repeat")
 def train_and_evaluate_model_for_repeat(
     self,
     model_name: str,
@@ -254,7 +257,7 @@ def train_and_evaluate_model_for_repeat(
         )
     task_logger.opt(colors=True).info(
         f"Train size: <green>{len(train_indices)}</green>, "
-        f"Test size: <green>{len(test_indices)}</green>"
+        f"Holdout size: <green>{len(test_indices)}</green>"
     )
 
     folds = self.generate_cv_folds_from_file(
@@ -371,6 +374,7 @@ def train_and_evaluate_model_for_repeat(
     return repeat_results
 
 
+@observed("model")
 def run_model_multiple_repeats(
     self,
     model_name: str,
@@ -426,7 +430,7 @@ def run_model_multiple_repeats(
             max_workers=self.repeat_workers,
             mp_context=mp.get_context("spawn"),
             initializer=_init_worker_threads,
-            initargs=(self.n_threads,),
+            initargs=(self.n_threads, get_client_config()),
             logger=main_logger,
         ) as executor:
             futures = [
@@ -595,23 +599,23 @@ def run_model_multiple_repeats(
             )
 
             main_logger.info(
-                f"Val Accuracy: {summary['avg_val_accuracy']:.{ModelConstants.metrics_precision}f} "
+                f"Validation Accuracy: {summary['avg_val_accuracy']:.{ModelConstants.metrics_precision}f} "
                 f"(±{summary['std_val_accuracy']:.{ModelConstants.metrics_precision}f})"
             )
             main_logger.info(
-                f"Test Accuracy: {summary['avg_test_accuracy']:.{ModelConstants.metrics_precision}f} "
+                f"Holdout Accuracy: {summary['avg_test_accuracy']:.{ModelConstants.metrics_precision}f} "
                 f"(±{summary['std_test_accuracy']:.{ModelConstants.metrics_precision}f})"
             )
             main_logger.info(
-                f"Test F1: {summary['avg_test_f1']:.{ModelConstants.metrics_precision}f} "
+                f"Holdout F1: {summary['avg_test_f1']:.{ModelConstants.metrics_precision}f} "
                 f"(±{summary['std_test_f1']:.{ModelConstants.metrics_precision}f})"
             )
             main_logger.info(
-                f"Test AUC: {summary['avg_test_auc']:.{ModelConstants.metrics_precision}f} "
+                f"Holdout AUC: {summary['avg_test_auc']:.{ModelConstants.metrics_precision}f} "
                 f"(±{summary['std_test_auc']:.{ModelConstants.metrics_precision}f})"
             )
             main_logger.info(
-                f"Ensemble Accuracy: {summary['avg_ensemble_accuracy']:.{ModelConstants.metrics_precision}f} "
+                f"Holdout ensemble Accuracy: {summary['avg_ensemble_accuracy']:.{ModelConstants.metrics_precision}f} "
                 f"(±{summary['std_ensemble_accuracy']:.{ModelConstants.metrics_precision}f})"
             )
         else:
@@ -620,15 +624,15 @@ def run_model_multiple_repeats(
                 f"(±{summary['std_train_pearson']:.{ModelConstants.metrics_precision}f})"
             )
             main_logger.info(
-                f"Val Pearson: {summary['avg_val_pearson']:.{ModelConstants.metrics_precision}f} "
+                f"Validation Pearson: {summary['avg_val_pearson']:.{ModelConstants.metrics_precision}f} "
                 f"(±{summary['std_val_pearson']:.{ModelConstants.metrics_precision}f})"
             )
             main_logger.info(
-                f"Test Pearson: {summary['avg_test_pearson']:.{ModelConstants.metrics_precision}f} "
+                f"Holdout Pearson: {summary['avg_test_pearson']:.{ModelConstants.metrics_precision}f} "
                 f"(±{summary['std_test_pearson']:.{ModelConstants.metrics_precision}f})"
             )
             main_logger.info(
-                f"Ensemble Pearson: {summary['avg_ensemble_pearson']:.{ModelConstants.metrics_precision}f} "
+                f"Holdout ensemble Pearson: {summary['avg_ensemble_pearson']:.{ModelConstants.metrics_precision}f} "
                 f"(±{summary['std_ensemble_pearson']:.{ModelConstants.metrics_precision}f})"
             )
 
@@ -677,12 +681,10 @@ def _run_repeat_task(self, model_name, X, y, repeat_idx, test_indices, cv_pheno_
         os.environ[_env_var] = str(self.n_threads)
 
     # Each subprocess writes to its own log file to avoid multi-process races
-    task_logger = setup_subprocess_logging(
-        model_name=model_name,
-        repeat_idx=repeat_idx,
-        log_dir=self.results_dir / ModelConstants.default_logs_dir,
-        log_level="DEBUG",
-    )
+    configure_worker(get_client_config(),
+                     self.logs_dir / "workers" / f"{model_name}_repeat_{repeat_idx + 1:03d}.log")
+    task_logger = main_logger
+
 
     task_logger.info(
         f"Subprocess (PID={os.getpid()}) starting {model_name} model repeat {repeat_idx + 1}"

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """Leak-free stacking ensemble based on train-side out-of-fold predictions."""
 
+from gpse.utils.training_monitor import observed, observation
 import os
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -97,18 +98,19 @@ class StackingEnsemble:
 
         for column, model_name in enumerate(self.selected_models):
             logger.info(f"Generating strict OOF meta-feature for model {model_name}")
-            for train_idx, val_idx in self._splitter(X_train, y_train):
-                fold_pipeline = build_training_pipeline(
-                    self._model_factory(model_name),
-                    task_type=self.task_type,
-                    model_name=model_name,
-                    feature_selection_config=self.feature_selection_config,
-                    genotype_imputation_config=self.genotype_imputation_config,
-                )
-                fold_pipeline.fit(X_train.iloc[train_idx], y_train.iloc[train_idx])
-                meta_train[val_idx, column] = self._prediction_feature(
-                    fold_pipeline, X_train.iloc[val_idx]
-                )
+            for fold_idx, (train_idx, val_idx) in enumerate(self._splitter(X_train, y_train)):
+                with observation("stacking_fold", model=model_name, fold=fold_idx + 1):
+                    fold_pipeline = build_training_pipeline(
+                        self._model_factory(model_name),
+                        task_type=self.task_type,
+                        model_name=model_name,
+                        feature_selection_config=self.feature_selection_config,
+                        genotype_imputation_config=self.genotype_imputation_config,
+                    )
+                    fold_pipeline.fit(X_train.iloc[train_idx], y_train.iloc[train_idx])
+                    meta_train[val_idx, column] = self._prediction_feature(
+                        fold_pipeline, X_train.iloc[val_idx]
+                    )
 
             full_pipeline = build_training_pipeline(
                 self._model_factory(model_name),
@@ -155,6 +157,7 @@ class StackingEnsemble:
         )
         return predictions, probabilities
 
+    @observed("stacking")
     def fit(
         self,
         X_train: pd.DataFrame,

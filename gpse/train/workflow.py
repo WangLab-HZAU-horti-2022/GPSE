@@ -12,6 +12,14 @@ from gpse.utils.cli_display import _load_software_info
 __version__ = _load_software_info().get("version", "unknown")
 
 
+class _ParallelOption(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        explicit = set(getattr(namespace, "_explicit_parallel", ()))
+        explicit.add(self.dest)
+        namespace._explicit_parallel = explicit
+        setattr(namespace, self.dest, values)
+
+
 def _log_stage(title: str, width: int = 76) -> None:
     """Log a stage separator through loguru.
 
@@ -62,6 +70,12 @@ def _build_parser(
             choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
             help="Set logging level (default: INFO)",
         )
+
+    display_group = parser.add_argument_group("terminal display")
+    display_group.add_argument("--verbosity", choices=["NORMAL", "VERBOSE", "DEBUG"],
+                               default="NORMAL", help="Terminal detail; files always retain DEBUG logs")
+    display_group.add_argument("--progress", choices=["auto", "off"], default="auto",
+                               help="Live display in interactive terminals, plain logs otherwise")
 
     req_group = parser.add_argument_group("required arguments")
     req_group.add_argument("--geno_file", type=str, help="Path to the genotype data file (CSV format)")
@@ -185,6 +199,7 @@ def _build_parser(
     performance_group = parser.add_argument_group("performance arguments")
     performance_group.add_argument(
         "--n_jobs",
+        action=_ParallelOption,
         type=int,
         default=1,
         help=(
@@ -194,12 +209,14 @@ def _build_parser(
     )
     performance_group.add_argument(
         "--max_workers",
+        action=_ParallelOption,
         type=int,
         default=1,
         help="Model-level parallelism: maximum number of models to train at the same time (default: 1)",
     )
     performance_group.add_argument(
         "--repeat_workers",
+        action=_ParallelOption,
         type=int,
         default=1,
         help="Repeat-level parallelism: maximum number of repeats per model to run at the same time (default: 1)",
@@ -209,9 +226,9 @@ def _build_parser(
         type=int,
         default=None,
         help=(
-            "Target total parallelism (number of concurrent training units). When set, "
+            "Theoretical parallel capacity budget. When set, "
             "GPSE automatically derives --max_workers and --repeat_workers from this budget "
-            "(with --n_jobs kept at 1). Useful shorthand for: --threads 100. "
+            "(including per-model threads). Explicit worker/thread options take precedence. "
             "Cannot exceed available CPU cores."
         ),
     )
@@ -437,11 +454,10 @@ def _show_version() -> None:
     )
 
 
-def _configure_logging(log_level: str) -> None:
-    import logging
+def _configure_logging(log_level: str, verbosity: str = "NORMAL") -> None:
+    from gpse.utils.log_utils import logger_init, set_training_verbosity
+    from gpse.train.predictor import _LazyMainLogger
 
-    level = getattr(logging, log_level.upper(), logging.INFO)
-    if hasattr(main_logger, "setLevel"):
-        main_logger.setLevel(level)
-        for handler in getattr(main_logger, "handlers", []):
-            handler.setLevel(level)
+    set_training_verbosity("DEBUG" if log_level == "DEBUG" else verbosity)
+    effective_level = "DEBUG" if verbosity == "DEBUG" and log_level == "INFO" else log_level
+    _LazyMainLogger._real = logger_init(log_level=effective_level)

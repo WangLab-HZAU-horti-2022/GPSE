@@ -7,6 +7,7 @@ Loguru-based logger initialization with RichHandler console output.
 import datetime
 import io
 import logging
+import os
 import sys
 import warnings
 from pathlib import Path
@@ -46,8 +47,8 @@ class _InterceptHandler(logging.Handler):
             level = logger.level(record.levelname).name
         except ValueError:
             level = record.levelno
-        frame, depth = sys._getframe(6), 6
-        while frame and frame.f_code.co_filename == logging.__file__:
+        frame, depth = logging.currentframe(), 0
+        while frame and (depth == 0 or frame.f_code.co_filename == logging.__file__):
             frame = frame.f_back
             depth += 1
         logger.opt(depth=depth, exception=record.exc_info).log(
@@ -80,7 +81,29 @@ try:
 except ImportError:
     _RICH_AVAILABLE = False
 
-_CONSOLE = Console(stderr=True) if _RICH_AVAILABLE else None
+def _interactive_terminal():
+    return bool(sys.stderr.isatty() and not os.environ.get("CI") and os.environ.get("TERM") != "dumb")
+
+
+_CONSOLE = Console(stderr=True, force_terminal=_interactive_terminal()) if _RICH_AVAILABLE else None
+_CONSOLE_LEVEL = "INFO"
+_TRAINING_VERBOSITY = None
+
+def console_log_level():
+    return _CONSOLE_LEVEL
+
+def set_training_verbosity(value):
+    global _TRAINING_VERBOSITY
+    _TRAINING_VERBOSITY = value
+
+def _console_filter(record):
+    from gpse.utils.training_monitor import terminal_active
+    if terminal_active():
+        return False
+    if _TRAINING_VERBOSITY in {"NORMAL", "VERBOSE"} and record["level"].no < 30:
+        return bool(record["extra"].get("console_summary"))
+    return True
+
 _ANALYSIS_LOGGER = None
 _ANALYSIS_LOG_FILE_PATH = None
 
@@ -97,11 +120,12 @@ def _add_console_handler(
             "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
             "<level>{message}</level>"
         )
-        logger.add(sys.stderr, format=fmt, level=log_level, colorize=True, enqueue=True)
+        logger.add(sys.stderr, format=fmt, level=log_level, colorize=_interactive_terminal(), enqueue=True, filter=_console_filter)
         return
 
     if style == "minimal":
         handler = RichHandler(
+            console=_CONSOLE,
             show_time=False,
             show_path=False,
             markup=True,
@@ -110,6 +134,7 @@ def _add_console_handler(
         fmt = "{message}"
     elif style == "detailed" or more_info:
         handler = RichHandler(
+            console=_CONSOLE,
             show_time=True,
             omit_repeated_times=False,
             show_path=True,
@@ -125,10 +150,11 @@ def _add_console_handler(
             "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
             "<level>{message}</level>"
         )
-        logger.add(sys.stderr, format=fmt, level=log_level, colorize=True, enqueue=True)
+        logger.add(sys.stderr, format=fmt, level=log_level, colorize=_interactive_terminal(), enqueue=True, filter=_console_filter)
         return
     else:
         handler = RichHandler(
+            console=_CONSOLE,
             show_time=True,
             omit_repeated_times=False,
             show_path=False,
@@ -138,7 +164,7 @@ def _add_console_handler(
         )
         fmt = "{message}"
 
-    logger.add(handler, format=fmt, level=log_level, enqueue=True)
+    logger.add(handler, format=fmt, level=log_level, enqueue=True, filter=_console_filter)
 
 def _print_run_header(
     sw: dict,
@@ -174,98 +200,17 @@ def setup_subprocess_logging(
     log_dir: Path,
     log_level: str = "DEBUG",
 ):
-    """
-    Configure per-worker logging for subprocess tasks.
+    """Compatibility entry point: worker file plus centralized event queue."""
+    from gpse.utils.training_monitor import configure_worker, get_client_config
 
-    Each subprocess writes to its own file under ``log_dir/workers/`` to avoid
-    multi-process file-write races on the main log.  Console output is also
-    enabled so the user still sees real-time progress.
-
-    Parameters
-    ----------
-    model_name : str
-        Model name (used in the log filename).
-    repeat_idx : int
-        Repeat index (used in the log filename).
-    log_dir : Path
-        Base logs directory (e.g. ``results/logs``).
-    log_level : str
-        Logging level for the worker file.
-
-    Returns
-    -------
-    loguru.Logger
-        The configured global loguru logger (same object, new handlers).
-    """
-    workers_dir = Path(log_dir) / "workers"
-    workers_dir.mkdir(parents=True, exist_ok=True)
-
-    log_file = workers_dir / f"{model_name}_repeat_{repeat_idx + 1:03d}.log"
-
-    # In spawn-context child processes the global logger is fresh (only the
-    # default stderr handler #0 exists).  Remove it and set up our own sinks.
-    logger.remove()
-
-    _add_console_handler(log_level, style="default")
-
-    # Per-worker file — DEBUG level, enqueue for safety
-    file_fmt = (
-        "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | "
-        "[{extra[worker]}] | {message}"
-    )
-    logger.add(
-        str(log_file),
-        format=file_fmt,
-        level=log_level,
-        colorize=False,
-        enqueue=True,
-    )
-
-    # Bind a default ``worker`` extra field so messages don't KeyError
-    logger.configure(extra={"worker": f"{model_name}_R{repeat_idx + 1}"})
-
+    log_file = Path(log_dir) / "workers" / f"{model_name}_repeat_{repeat_idx + 1:03d}.log"
+    configure_worker(get_client_config(), log_file, log_level=log_level)
     return logger
 
 
 def collect_subprocess_logs(log_dir: Path, main_logger) -> None:
-    """
-    Read all per-worker log files and append a digest to the main log.
-
-    Called by the main process after all subprocess tasks have finished so
-    that the main log contains a complete record of every repeat.
-
-    Parameters
-    ----------
-    log_dir : Path
-        Base logs directory containing the ``workers/`` subfolder.
-    main_logger
-        The main-process loguru logger.
-    """
-    workers_dir = Path(log_dir) / "workers"
-    if not workers_dir.exists():
-        return
-
-    worker_logs = sorted(workers_dir.glob("*.log"))
-    if not worker_logs:
-        return
-
-    main_logger.info(f"Collecting {len(worker_logs)} subprocess log(s) from {workers_dir}")
-
-    for log_file in worker_logs:
-        try:
-            content = log_file.read_text(encoding="utf-8").strip()
-            if not content:
-                continue
-            main_logger.info(f"{'─' * 40}")
-            main_logger.info(f"▶ Subprocess log: {log_file.name}")
-            main_logger.info(f"{'─' * 40}")
-            for line in content.splitlines():
-                main_logger.info(f"  {line}")
-        except Exception as e:
-            main_logger.warning(f"Failed to read subprocess log {log_file.name}: {e}")
-
-    main_logger.info(f"{'─' * 40}")
-    main_logger.info(f"Subprocess log collection complete ({len(worker_logs)} files)")
+    """Keep worker files in place; replaying them would duplicate observations."""
+    main_logger.debug(f"Worker logs retained in {Path(log_dir) / 'workers'}")
 
 
 def shorten_path(path, max_len: int = 80) -> str:
@@ -337,7 +282,7 @@ def log_config(config_dict: dict, title: str = "Configuration") -> None:
     for k, v in config_dict.items():
         table.add_row(str(k), str(v))
 
-    console = Console(file=io.StringIO(), force_terminal=True, width=80)
+    console = Console(file=io.StringIO(), color_system=None, width=80)
     console.print(table)
     logger.info("\n" + console.file.getvalue())
 
@@ -395,7 +340,7 @@ def get_loading_status(msg: str):
 
 def logger_init(
     logger_name: str = None,
-    log_level: str = "INFO",
+    log_level: str = None,
     more_info: bool = False,
     style: str = "default",
 ) -> "logger":
@@ -408,7 +353,9 @@ def logger_init(
     default = load_default_config()
     cfg_logs = default.get("logs", {})
 
-    log_level = log_level or cfg_logs.get("log_level", "INFO")
+    global _CONSOLE_LEVEL
+    log_level = log_level or _CONSOLE_LEVEL or cfg_logs.get("log_level", "INFO")
+    _CONSOLE_LEVEL = log_level
     more_info = more_info if more_info is not None else cfg_logs.get("more_info", False)
     style = style or cfg_logs.get("style", "default")
 
@@ -422,26 +369,29 @@ def logger_init(
     if logger_name:
         file_fmt = (
             "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | "
-            "{name}:{function}:{line} | {message}"
+            "{name}:{function}:{line} | {extra} | {message}"
         )
-        Path(logger_name).parent.mkdir(parents=True, exist_ok=True)
-        logger.add(
-            logger_name,
-            format=file_fmt,
-            level="DEBUG",
-            colorize=False,
-            enqueue=True,
-            backtrace=True,
-            diagnose=False,
-        )
+        try:
+            Path(logger_name).parent.mkdir(parents=True, exist_ok=True)
+            logger.add(
+                logger_name,
+                format=file_fmt,
+                level="DEBUG",
+                colorize=False,
+                enqueue=True,
+                backtrace=True,
+                diagnose=False,
+            )
+        except Exception as exc:
+            logger.warning(f"Detailed log file unavailable: {exc}")
 
     # Print project config info as the first log messages
     project_configs = get_loaded_project_configs()
     if project_configs:
         for cfg_path in project_configs:
-            logger.info(f"GPSE config loaded: {cfg_path}")
+            logger.debug(f"GPSE config loaded: {cfg_path}")
     else:
-        logger.info("GPSE config: none found (using package defaults)")
+        logger.debug("GPSE config: none found (using package defaults)")
 
     return logger
 

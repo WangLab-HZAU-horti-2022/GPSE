@@ -7,9 +7,13 @@ Main Pipeline Module
 Runs all or specified models and optionally performs Stacking ensemble.
 """
 
+from gpse.utils.training_monitor import (
+    observed, monitored_run, publish, configure_worker, get_client_config, init_client, observation,
+)
 import os
 import json
 import traceback
+import signal
 from concurrent.futures import as_completed
 
 import numpy as np
@@ -29,12 +33,22 @@ from gpse.train.topsis import TOPSISEvaluator
 from gpse.utils.log_utils import shorten_path
 
 
-def _init_model_worker_threads(n_threads: int) -> None:
+def _cancel_model_worker(signum, frame):
+    # Let a model worker unwind its nested repeat pool on parent cancellation.
+    raise KeyboardInterrupt
+
+
+def _init_model_worker_threads(n_threads: int, monitor_config=None) -> None:
+    init_client(monitor_config)
+    if hasattr(signal, "SIGTERM"):
+        signal.signal(signal.SIGTERM, _cancel_model_worker)
     for env_var in ModelConstants.thread_env_vars:
         os.environ[env_var] = str(n_threads)
 
 
 def _run_model_task(predictor, model_name, X, y, cv_pheno_data, use_same_test_set, test_indices):
+    configure_worker(get_client_config(),
+                     predictor.logs_dir / "workers" / f"{model_name}.log")
     return predictor.run_model_multiple_repeats(
         model_name, X, y, cv_pheno_data, use_same_test_set, test_indices
     )
@@ -64,6 +78,7 @@ def _save_split_manifest(
         json.dump(manifest, handle, indent=2)
 
 
+@observed("holdout")
 def _write_holdout_reports(paths, all_model_results, task_type, split_strategy):
     """Persist final hold-out metrics after all model/stacking choices are frozen."""
     evaluation_dir = paths.evaluation_dir
@@ -109,9 +124,11 @@ def _write_holdout_reports(paths, all_model_results, task_type, split_strategy):
     current.to_csv(paths.ensure("holdout_metrics_csv"), index=False)
     with paths.ensure("holdout_metrics_json").open("w", encoding="utf-8") as handle:
         json.dump(current.to_dict(orient="records"), handle, indent=2)
+    publish("holdout_metrics", "record", metrics=current.to_dict(orient="records"))
     main_logger.info(f"Final hold-out reports saved to {shorten_path(evaluation_dir)}")
 
 
+@observed("predictions")
 def _write_topsis_final_predictions(paths, all_model_results, X, task_type):
     """Persist hold-out predictions from the CV-TOPSIS top-ranked model.
 
@@ -186,6 +203,7 @@ def _write_topsis_final_predictions(paths, all_model_results, X, task_type):
     return output_path
 
 
+@monitored_run
 def run_all_models(
     self,
     geno_file: str,
@@ -286,6 +304,8 @@ def run_all_models(
     if models is None:
         models = self.available_models
 
+    models = list(dict.fromkeys(models))
+
     main_logger.info(f"Will run the following models: {', '.join(models)}")
 
     all_model_results = {}
@@ -297,7 +317,7 @@ def run_all_models(
         with graceful_process_pool(
             max_workers=model_workers,
             initializer=_init_model_worker_threads,
-            initargs=(self.n_threads,),
+            initargs=(self.n_threads, get_client_config()),
             logger=main_logger,
         ) as executor:
             futures = {
@@ -350,32 +370,33 @@ def run_all_models(
         )
     create_comparison_table(all_model_results, self.paths.evaluation_dir, main_logger)
 
-    selected_models_for_stacking = None
-    model_repeats = {}
-    aggregates = {}
-    for name, result in all_model_results.items():
-        if "cv_aggregation" not in result:
-            raise ValueError(f"{name}: missing complete training-CV aggregation")
-        aggregates[name] = result["cv_aggregation"]
-        model_repeats[name] = [json.loads(path.read_text()) for path in
-                              (self.paths.models_dir / name).glob("repeat_*/repeat_results.json")]
-    validate_shared_splits(model_repeats)
-    export_cv(self.paths.selection_dir, model_repeats, aggregates, provenance)
-    stability_metric = getattr(self, "cv_stability_metric", "cv_std_repeat")
-    ranked = TOPSISEvaluator(main_logger).evaluate(
-        self.paths.selection_dir / "model_comparison_cv.csv",
-        self.paths.ensure("topsis_full"),
-        criteria=["cv_mean", stability_metric], criteria_types=["max", "min"],
-        manual_weights="0.8,0.2", min_transform="neglog",
-        simple_output=self.paths.ensure("topsis_simple"),
-    )
-    if use_stacking:
-        selected_models_for_stacking = ranked["Model"].tolist()[:top_n_models]
-        with self.paths.ensure("stacking_selected_models").open("x", encoding="utf-8") as handle:
-            json.dump({"selection_source": "train_only_cv", "accuracy_metric": "cv_mean",
-                       "stability_metric": stability_metric, "weight_method": "manual",
-                       "weights": [0.8, 0.2], "selection_method": "TOPSIS",
-                       "selected_models": selected_models_for_stacking}, handle, indent=2)
+    with observation("selection"):
+        selected_models_for_stacking = None
+        model_repeats = {}
+        aggregates = {}
+        for name, result in all_model_results.items():
+            if "cv_aggregation" not in result:
+                raise ValueError(f"{name}: missing complete training-CV aggregation")
+            aggregates[name] = result["cv_aggregation"]
+            model_repeats[name] = [json.loads(path.read_text()) for path in
+                                  (self.paths.models_dir / name).glob("repeat_*/repeat_results.json")]
+        validate_shared_splits(model_repeats)
+        export_cv(self.paths.selection_dir, model_repeats, aggregates, provenance)
+        stability_metric = getattr(self, "cv_stability_metric", "cv_std_repeat")
+        ranked = TOPSISEvaluator(main_logger).evaluate(
+            self.paths.selection_dir / "model_comparison_cv.csv",
+            self.paths.ensure("topsis_full"),
+            criteria=["cv_mean", stability_metric], criteria_types=["max", "min"],
+            manual_weights="0.8,0.2", min_transform="neglog",
+            simple_output=self.paths.ensure("topsis_simple"),
+        )
+        if use_stacking:
+            selected_models_for_stacking = ranked["Model"].tolist()[:top_n_models]
+            with self.paths.ensure("stacking_selected_models").open("x", encoding="utf-8") as handle:
+                json.dump({"selection_source": "train_only_cv", "accuracy_metric": "cv_mean",
+                           "stability_metric": stability_metric, "weight_method": "manual",
+                           "weights": [0.8, 0.2], "selection_method": "TOPSIS",
+                           "selected_models": selected_models_for_stacking}, handle, indent=2)
 
     if use_stacking and len(all_model_results) >= 2:
         try:
@@ -459,23 +480,24 @@ def run_all_models(
     _write_topsis_final_predictions(
         self.paths, all_model_results, X, self.task_type
     )
-    report_paths = write_result_bundle(
-        self.results_dir,
-        all_model_results,
-        task_type=self.task_type,
-        target_trait=target_trait,
-        split_strategy=self.split_strategy,
-        sample_count=len(X),
-        feature_count=X.shape[1],
-        feature_selection=self.feature_selection_config.as_dict(),
-        genotype_imputation=self.genotype_imputation_config.as_dict(),
-        paths=self.paths,
-    )
-    main_logger.info(
-        "Result bundle saved: "
-        + ", ".join(shorten_path(path) for path in report_paths.values())
-    )
-    _finalize_run_outputs(self, use_stacking, target_trait, len(all_model_results))
+    with observation("reports"):
+        report_paths = write_result_bundle(
+            self.results_dir,
+            all_model_results,
+            task_type=self.task_type,
+            target_trait=target_trait,
+            split_strategy=self.split_strategy,
+            sample_count=len(X),
+            feature_count=X.shape[1],
+            feature_selection=self.feature_selection_config.as_dict(),
+            genotype_imputation=self.genotype_imputation_config.as_dict(),
+            paths=self.paths,
+        )
+        main_logger.info(
+            "Result bundle saved: "
+            + ", ".join(shorten_path(path) for path in report_paths.values())
+        )
+        _finalize_run_outputs(self, use_stacking, target_trait, len(all_model_results))
     return all_model_results
 
 

@@ -121,6 +121,7 @@ def collect_artifacts(paths) -> list[dict[str, Any]]:
 
     # Model and ensemble artifacts discovered on disk (never copied).
     discoveries = [
+        (paths.logs_dir, "execution_log", "utils.training_monitor / utils.log_utils"),
         (paths.models_dir, "model", "train._repeat_training / train._ensemble"),
         (paths.ensembles_gpse_dir, "ensemble", "train.stacking.StackingEnsemble"),
     ]

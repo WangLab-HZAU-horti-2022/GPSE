@@ -8,6 +8,7 @@ Handles genotype / phenotype data loading, phenotype standardization,
 and related preprocessing utilities.
 """
 
+from gpse.utils.training_monitor import observed
 import json
 import numpy as np
 import pandas as pd
@@ -37,6 +38,7 @@ def _read_file_auto(file_path: str) -> pd.DataFrame:
         return pd.read_csv(file_path)
 
 
+@observed("data")
 def load_data(self, geno_file: str, pheno_file: str, target_trait: str) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
     """
     Load genotype and phenotype data.

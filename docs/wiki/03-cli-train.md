@@ -83,6 +83,14 @@ Classification models (6): `rf_clf, xgboost_clf, lightgbm_clf, catboost_clf, svm
 | `--max_workers` | 1 | Model-level parallelism |
 | `--repeat_workers` | 1 | Repeat-level parallelism |
 
+### Terminal progress and logs
+
+The default `--verbosity NORMAL` shows a single Live model table on an interactive terminal, key warnings/errors and completion metrics. Use `--verbosity VERBOSE` for Repeat/Fold/Trial stages or `--verbosity DEBUG` (also `-l DEBUG`) for detailed diagnostics. `--progress off` disables dynamic rendering. Redirected output, CI and `TERM=dumb` automatically use plain text without ANSI control characters.
+
+`--threads` is a theoretical capacity budget. Explicit `--n_jobs`, `--max_workers` and `--repeat_workers` values, including `1`, take precedence over automatic derivation. With the default frozen-parameter mode, repeats remain sequential; configured worker capacity is not measured CPU concurrency.
+
+Every run retains DEBUG text under `logs/`, worker logs under `logs/workers/`, structured events in `logs/events.jsonl`, and full Trial histories under `logs/optuna/`. Events carry the same Run ID as `run_manifest.json` and identify Model/Repeat/Fold/Trial. CV Mean, the selected CV Std definition, Robust Objective and Holdout metrics are labeled separately. See [logging architecture and acceptance](../cli-logging-design.md).
+
 ### Preprocessing Mode
 
 `--enable_preprocess` runs the convert pipeline inline before training; `--preprocess_only` runs preprocessing only. Companion options mirror `gpse convert`: `--preprocess_prefix --vcf_file --bfile --ped_file --map_file --extract_file --snp_dir --direct_convert --matrix_file --raw_pheno_file --skip_matrix_conversion --skip_phenotype_match --skip_data_clean --load_matrix_info --plink_path --plink_out`.

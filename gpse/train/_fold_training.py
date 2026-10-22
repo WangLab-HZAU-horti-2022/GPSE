@@ -7,6 +7,7 @@ Fold Training Module
 Handles training and evaluation of individual CV folds and their aggregation.
 """
 
+from gpse.utils.training_monitor import observed
 import traceback
 import numpy as np
 import pandas as pd
@@ -26,6 +27,7 @@ from gpse.train._model_pipeline import build_training_pipeline
 from gpse.train._cv_statistics import digest
 
 
+@observed("fold")
 def _train_single_fold(
     self,
     model,
