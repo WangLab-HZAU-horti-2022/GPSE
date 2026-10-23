@@ -241,6 +241,7 @@ models:
       alpha: 1.0
       kernel: rbf
       gamma: null
+      numerical_policy: raise
     param_func: "builtin:_kernelridge_reg_params"
 
   - name: mlp_reg

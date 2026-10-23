@@ -172,6 +172,8 @@ def _train_single_fold(
             "genotype_imputation": self.genotype_imputation_config.as_dict(),
             "selected_feature_count": len(selected_features),
         }
+        if hasattr(model, "get_kernel_metadata"):
+            fold_result["kernel_parameters"] = model.get_kernel_metadata()
 
         # Save model
         if self.save_models:

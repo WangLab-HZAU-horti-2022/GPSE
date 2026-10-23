@@ -1,0 +1,408 @@
+{
+  "scope": "Local synthetic reproduction, not remote user data",
+  "sklearn_version": "1.7.2",
+  "optuna_version": "4.9.0",
+  "seed": 42,
+  "samples": 120,
+  "features": 2048,
+  "params_first_10_trials": [
+    {
+      "alpha": 0.029375384576328288,
+      "kernel": "rbf",
+      "gamma": 2.231010801867921e-06
+    },
+    {
+      "alpha": 3.142880890840109,
+      "kernel": "sigmoid",
+      "gamma": 1.879466824163847e-05,
+      "coef0": 1.8182496720710062
+    },
+    {
+      "alpha": 0.6847920095574779,
+      "kernel": "laplacian",
+      "gamma": 6.870101665590021e-06
+    },
+    {
+      "alpha": 0.34890188454913873,
+      "kernel": "polynomial",
+      "gamma": 0.003584985580340473,
+      "degree": 2,
+      "coef0": 6.075448519014383
+    },
+    {
+      "alpha": 0.08200518402245831,
+      "kernel": "polynomial",
+      "gamma": 3.855073690026181e-06,
+      "degree": 4,
+      "coef0": 4.4015249373960135
+    },
+    {
+      "alpha": 0.9717775305059632,
+      "kernel": "polynomial",
+      "gamma": 7.417652034871826e-05,
+      "degree": 4,
+      "coef0": 5.4671027934327965
+    },
+    {
+      "alpha": 0.6218704727769077,
+      "kernel": "rbf",
+      "gamma": 0.33981724150105963
+    },
+    {
+      "alpha": 0.06516990611177176,
+      "kernel": "sigmoid",
+      "gamma": 0.09384800715909536,
+      "coef0": 3.567533266935893
+    },
+    {
+      "alpha": 9.133995846860973,
+      "kernel": "polynomial",
+      "gamma": 0.04300001586162608,
+      "degree": 2,
+      "coef0": 0.05522117123602399
+    },
+    {
+      "alpha": 0.11895896737553548,
+      "kernel": "linear"
+    }
+  ],
+  "folds": [
+    {
+      "case": "trial_7",
+      "fold": 1,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963
+      },
+      "finite_predictions": true,
+      "prediction_range": 0.0,
+      "target_range": 9.269967229331264,
+      "cross_kernel_nonzero_count": 0,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": 0.0,
+      "cross_kernel_max": 0.0,
+      "regularized_min_eigenvalue": 1.6218704727769078,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [],
+      "pearson": null
+    },
+    {
+      "case": "trial_8",
+      "fold": 1,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893
+      },
+      "finite_predictions": true,
+      "prediction_range": 93.82638779543456,
+      "target_range": 9.269967229331264,
+      "cross_kernel_nonzero_count": 2304,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": -0.9999999999721518,
+      "cross_kernel_max": 1.0,
+      "regularized_min_eigenvalue": -13.963614907309495,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [
+        "Singular matrix in solving dual problem. Using least-squares solution instead."
+      ],
+      "pearson": 0.09044761921575485
+    },
+    {
+      "case": "trial_7_dimension_scaled_gamma",
+      "fold": 1,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.00048828125
+      },
+      "finite_predictions": true,
+      "prediction_range": 0.5381223301676548,
+      "target_range": 9.269967229331264,
+      "cross_kernel_nonzero_count": 2304,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": 0.11004461638600306,
+      "cross_kernel_max": 0.16217114549676592,
+      "regularized_min_eigenvalue": 1.3915812158768306,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [],
+      "pearson": -0.014632983863662387
+    },
+    {
+      "case": "trial_7",
+      "fold": 2,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963
+      },
+      "finite_predictions": true,
+      "prediction_range": 0.0,
+      "target_range": 12.69309854605729,
+      "cross_kernel_nonzero_count": 0,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": 0.0,
+      "cross_kernel_max": 0.0,
+      "regularized_min_eigenvalue": 1.6218704727769078,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [],
+      "pearson": null
+    },
+    {
+      "case": "trial_8",
+      "fold": 2,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893
+      },
+      "finite_predictions": true,
+      "prediction_range": 29.58314620801123,
+      "target_range": 12.69309854605729,
+      "cross_kernel_nonzero_count": 2304,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": -0.9999999999856334,
+      "cross_kernel_max": 1.0,
+      "regularized_min_eigenvalue": -14.582972665161956,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [
+        "Singular matrix in solving dual problem. Using least-squares solution instead."
+      ],
+      "pearson": 0.28080571813683886
+    },
+    {
+      "case": "trial_7_dimension_scaled_gamma",
+      "fold": 2,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.00048828125
+      },
+      "finite_predictions": true,
+      "prediction_range": 0.3390563769246573,
+      "target_range": 12.69309854605729,
+      "cross_kernel_nonzero_count": 2304,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": 0.10518716936680816,
+      "cross_kernel_max": 0.16538980958672791,
+      "regularized_min_eigenvalue": 1.389961976138578,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [],
+      "pearson": 0.42142670886379285
+    },
+    {
+      "case": "trial_7",
+      "fold": 3,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963
+      },
+      "finite_predictions": true,
+      "prediction_range": 0.0,
+      "target_range": 6.155207134286494,
+      "cross_kernel_nonzero_count": 0,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": 0.0,
+      "cross_kernel_max": 0.0,
+      "regularized_min_eigenvalue": 1.6218704727769078,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [],
+      "pearson": null
+    },
+    {
+      "case": "trial_8",
+      "fold": 3,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893
+      },
+      "finite_predictions": true,
+      "prediction_range": 150.92590236467322,
+      "target_range": 6.155207134286494,
+      "cross_kernel_nonzero_count": 2304,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": -0.9999999971303972,
+      "cross_kernel_max": 0.9999999999999947,
+      "regularized_min_eigenvalue": -13.940095781466637,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [
+        "Singular matrix in solving dual problem. Using least-squares solution instead."
+      ],
+      "pearson": -0.36250729790616265
+    },
+    {
+      "case": "trial_7_dimension_scaled_gamma",
+      "fold": 3,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.00048828125
+      },
+      "finite_predictions": true,
+      "prediction_range": 0.4087806280499131,
+      "target_range": 6.155207134286494,
+      "cross_kernel_nonzero_count": 2304,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": 0.10567714575953543,
+      "cross_kernel_max": 0.15572638071723852,
+      "regularized_min_eigenvalue": 1.3904344038633516,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [],
+      "pearson": 0.06535902745448315
+    },
+    {
+      "case": "trial_7",
+      "fold": 4,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963
+      },
+      "finite_predictions": true,
+      "prediction_range": 0.0,
+      "target_range": 8.285310629633418,
+      "cross_kernel_nonzero_count": 0,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": 0.0,
+      "cross_kernel_max": 0.0,
+      "regularized_min_eigenvalue": 1.6218704727769078,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [],
+      "pearson": null
+    },
+    {
+      "case": "trial_8",
+      "fold": 4,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893
+      },
+      "finite_predictions": true,
+      "prediction_range": 41.089361320751536,
+      "target_range": 8.285310629633418,
+      "cross_kernel_nonzero_count": 2304,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": -0.9999999995902271,
+      "cross_kernel_max": 0.9999999999999997,
+      "regularized_min_eigenvalue": -14.520287255300119,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [
+        "Singular matrix in solving dual problem. Using least-squares solution instead."
+      ],
+      "pearson": -0.12356378871182819
+    },
+    {
+      "case": "trial_7_dimension_scaled_gamma",
+      "fold": 4,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.00048828125
+      },
+      "finite_predictions": true,
+      "prediction_range": 0.45193055470747256,
+      "target_range": 8.285310629633418,
+      "cross_kernel_nonzero_count": 2304,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": 0.10701165453191556,
+      "cross_kernel_max": 0.16467477019525725,
+      "regularized_min_eigenvalue": 1.3901179177642145,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [],
+      "pearson": 0.036198770805914854
+    },
+    {
+      "case": "trial_7",
+      "fold": 5,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963
+      },
+      "finite_predictions": true,
+      "prediction_range": 0.0,
+      "target_range": 11.82843169170792,
+      "cross_kernel_nonzero_count": 0,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": 0.0,
+      "cross_kernel_max": 0.0,
+      "regularized_min_eigenvalue": 1.6218704727769078,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [],
+      "pearson": null
+    },
+    {
+      "case": "trial_8",
+      "fold": 5,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893
+      },
+      "finite_predictions": true,
+      "prediction_range": 81.02389773983558,
+      "target_range": 11.82843169170792,
+      "cross_kernel_nonzero_count": 2304,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": -0.9999999994351731,
+      "cross_kernel_max": 0.9999999999999992,
+      "regularized_min_eigenvalue": -14.128822029991703,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [
+        "Singular matrix in solving dual problem. Using least-squares solution instead."
+      ],
+      "pearson": -0.13017496275278503
+    },
+    {
+      "case": "trial_7_dimension_scaled_gamma",
+      "fold": 5,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.00048828125
+      },
+      "finite_predictions": true,
+      "prediction_range": 0.2913130706907012,
+      "target_range": 11.82843169170792,
+      "cross_kernel_nonzero_count": 2304,
+      "cross_kernel_elements": 2304,
+      "cross_kernel_min": 0.10511928860614841,
+      "cross_kernel_max": 0.15616229465159825,
+      "regularized_min_eigenvalue": 1.3882648414509988,
+      "regularized_matrix_rank": 96,
+      "matrix_size": 96,
+      "warnings": [],
+      "pearson": 0.059736565317818596
+    }
+  ],
+  "validation": "6 passed in 0.87s (existing constant-Pearson pruning and SafeKernelRidge tests)",
+  "source_sha256": {
+    "gpse/models/regression_model_optimizer.py": "a9c1f6af98a67483d627fea448ef5bddf2b33cd741a9d395c9d9ccb47056e7c8",
+    "gpse/models/safe_kernel_ridge.py": "064067f61adc27f309c8655ef5daba5040ff6be6b8b26a53f79ec398196f5d9d",
+    "gpse/train/_optimization.py": "82dcc695ee0ec7b72af430948c58eee71f19df5657ce11ab3d5b479853eefca1",
+    "gpse/train/_model_pipeline.py": "2ec036a82e9bb220e3db0b104b8c6af8f07983fcda02f2c1de04ce8ae7fc174e"
+  }
+}

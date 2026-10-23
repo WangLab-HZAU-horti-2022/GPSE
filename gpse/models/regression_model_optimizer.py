@@ -288,21 +288,22 @@ class RegressionModelOptimizer:
         }
 
     def _kernelridge_reg_params(self, trial: optuna.Trial) -> Dict[str, Any]:
-        kernel = trial.suggest_categorical('kernel', ['linear', 'rbf', 'laplacian', 'polynomial', 'sigmoid'])
+        # Sigmoid is not positive semidefinite for arbitrary parameters. It is
+        # an explicit custom-search option, rather than a default candidate.
+        kernel = trial.suggest_categorical('kernel', ['linear', 'rbf', 'laplacian', 'polynomial'])
 
         params = {
             'alpha': trial.suggest_float('alpha', 1e-2, 10.0, log=True),
             'kernel': kernel,
         }
 
-        if kernel in ['rbf', 'laplacian', 'polynomial', 'sigmoid']:
-            params['gamma'] = trial.suggest_float('gamma', 1e-6, 1.0, log=True)
+        if kernel in ['rbf', 'laplacian', 'polynomial']:
+            # The estimator divides by its own post-preprocessing feature
+            # count at fit time, including CV, stacking and deployment refits.
+            params['gamma_scale'] = trial.suggest_float('gamma_scale', 1e-3, 10.0, log=True)
 
         if kernel == 'polynomial':
             params['degree'] = trial.suggest_int('degree', 2, 5)
-            params['coef0'] = trial.suggest_float('coef0', 0.0, 10.0)
-
-        if kernel == 'sigmoid':
             params['coef0'] = trial.suggest_float('coef0', 0.0, 10.0)
 
         return params

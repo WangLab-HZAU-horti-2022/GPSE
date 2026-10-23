@@ -24,6 +24,11 @@ from gpse.config import ModelConstants
 from gpse.utils.genomic_utils import generate_optimization_seed
 from threadpoolctl import threadpool_limits
 from gpse.train._model_pipeline import build_training_pipeline
+from gpse.models.safe_kernel_ridge import KernelNumericalError
+
+
+class InvalidValidationScore(ValueError):
+    """An expected invalid candidate, not an unexpected training failure."""
 
 
 def evaluate_optimization_fold(self, X, y, model_name, params, train_idx, val_idx, fold_idx, log):
@@ -41,6 +46,14 @@ def evaluate_optimization_fold(self, X, y, model_name, params, train_idx, val_id
         )
         with threadpool_limits(limits=self.n_threads):
             fold_model.fit(X_fold_train, y_fold_train)
+            estimator = fold_model.named_steps["model"]
+            if hasattr(estimator, "get_kernel_metadata"):
+                publish(
+                    "kernel_parameters",
+                    "record",
+                    fold=fold_idx + 1,
+                    **estimator.get_kernel_metadata(),
+                )
             if self.task_type == "classification":
                 y_fold_pred, y_fold_proba = (
                     self.genomic_classifier.generate_classification_labels_from_model(
@@ -52,17 +65,23 @@ def evaluate_optimization_fold(self, X, y, model_name, params, train_idx, val_id
                 )
                 return balanced_accuracy_score(y_fold_val, y_fold_pred)
             y_fold_pred = fold_model.predict(X_fold_val)
-        if (
-            not np.isfinite(y_fold_pred).all()
-            or len(y_fold_val) < 2
-            or np.ptp(y_fold_pred) == 0
-            or np.ptp(y_fold_val) == 0
-        ):
-            raise ValueError("Undefined validation Pearson (constant/non-finite input)")
+        if len(y_fold_val) < 2:
+            raise InvalidValidationScore("Validation Pearson requires at least two samples")
+        if not np.isfinite(y_fold_val).all():
+            raise InvalidValidationScore("Non-finite validation targets")
+        if np.ptp(y_fold_val) == 0:
+            raise InvalidValidationScore("Constant validation targets; Pearson is undefined")
+        if not np.isfinite(y_fold_pred).all():
+            raise InvalidValidationScore("Non-finite validation predictions")
+        if np.ptp(y_fold_pred) == 0:
+            raise InvalidValidationScore("Constant validation predictions; Pearson is undefined")
         score = pearsonr(y_fold_val, y_fold_pred)[0]
         if not np.isfinite(score):
-            raise ValueError("Non-finite validation Pearson")
+            raise InvalidValidationScore("Non-finite validation Pearson")
         return score
+    except (KernelNumericalError, InvalidValidationScore) as exc:
+        log.debug(f"Pruning invalid CV fold {fold_idx + 1}: {exc}")
+        raise optuna.TrialPruned(f"Invalid CV fold {fold_idx + 1}: {exc}") from exc
     except Exception as exc:
         log.error(f"Fold {fold_idx + 1} training failed: {exc}")
         raise optuna.TrialPruned(f"Invalid CV fold {fold_idx + 1}: {exc}") from exc
@@ -135,27 +154,37 @@ def optimize_model_parameters(
         params = param_func(trial)
 
         filtered_params = self.filter_model_params_unified(model_name, params)
+        if model_name == "kernelridge_reg":
+            resolved = self.get_default_params(model_name)
+            resolved.update(filtered_params)
+            # Fixed YAML parameters are absent from study.best_params. Retain
+            # the exact constructor inputs used by the evaluated candidate.
+            trial.set_user_attr("model_params", resolved)
 
         log.debug(f"Evaluating parameter set: {filtered_params}")
-        if fold_runner is not None:
-            cv_scores = fold_runner(filtered_params, folds, trial.number)
-        else:
-            cv_scores = []
-            for fold_idx, (train_idx, val_idx) in enumerate(folds):
-                with observation("optimization_fold", fold=fold_idx + 1):
-                    cv_scores.append(
-                        evaluate_optimization_fold(
-                            self,
-                            X,
-                            y,
-                            model_name,
-                            filtered_params,
-                            train_idx,
-                            val_idx,
-                            fold_idx,
-                            log,
+        try:
+            if fold_runner is not None:
+                cv_scores = fold_runner(filtered_params, folds, trial.number)
+            else:
+                cv_scores = []
+                for fold_idx, (train_idx, val_idx) in enumerate(folds):
+                    with observation("optimization_fold", fold=fold_idx + 1):
+                        cv_scores.append(
+                            evaluate_optimization_fold(
+                                self,
+                                X,
+                                y,
+                                model_name,
+                                filtered_params,
+                                train_idx,
+                                val_idx,
+                                fold_idx,
+                                log,
+                            )
                         )
-                    )
+        except optuna.TrialPruned as exc:
+            trial.set_user_attr("prune_reason", str(exc))
+            raise
 
         if len(cv_scores) != self.n_splits:
             raise optuna.TrialPruned("Incomplete CV trial; every configured fold is required")
@@ -228,7 +257,15 @@ def optimize_model_parameters(
                 "robust_objective": trial.value,
             },
             "elapsed_s": trial.duration.total_seconds() if trial.duration else None,
+            "prune_reason": trial.user_attrs.get("prune_reason"),
         }
+        if model_name == "kernelridge_reg":
+            record["model_params"] = trial.user_attrs.get("model_params")
+        if trial.state == optuna.trial.TrialState.PRUNED:
+            log.warning(
+                f"{model_name} R{repeat_idx + 1} T{trial.number + 1} pruned: "
+                f"{record['prune_reason'] or 'incomplete/invalid CV trial'}"
+            )
         publish("trial_history", "record", **record)
         try:
             history_path.parent.mkdir(parents=True, exist_ok=True)
@@ -264,6 +301,10 @@ def optimize_model_parameters(
         log.info(f"Best robust CV Pearson objective: {study.best_value:.6f}")
 
     filtered_best_params = self.filter_model_params_unified(model_name, best_params)
+    if model_name == "kernelridge_reg":
+        # Persist the effective policy, including YAML overrides, rather than
+        # relying on future defaults when deployment/stacking refits the model.
+        filtered_best_params = dict(study.best_trial.user_attrs["model_params"])
 
     top_trials = sorted(
         (trial for trial in study.trials if trial.value is not None),

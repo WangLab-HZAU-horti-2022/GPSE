@@ -24,8 +24,11 @@ import time
 import uuid
 
 from loguru import logger
-from rich.console import Console
+from rich import box
+from rich.console import Console, Group
 from rich.live import Live
+from rich.panel import Panel
+from rich.progress_bar import ProgressBar
 from rich.table import Table
 from rich.text import Text
 
@@ -401,8 +404,10 @@ class ConsoleRenderer:
         self.level = logging._nameToLevel.get(level, logging.INFO)
         self.repeats, self.folds = repeats, folds
         self.models = {
-            name: {"status": "pending", "active": {}, "folds": 0, "repeats": 0} for name in models
+            name: {"status": "pending", "active": {}, "folds": 0, "repeats": 0, "metrics": {}}
+            for name in models
         }
+        self.pool = {}
         self.phase = "Initializing"
         self.started = time.monotonic()
         self.live = None
@@ -411,33 +416,226 @@ class ConsoleRenderer:
     def refresh(self, force=False):
         if self.live:
             refresh_now = force or time.monotonic() - self.last_refresh >= 0.25
-            self.live.update(self.table(), refresh=refresh_now)
             if refresh_now:
+                self.live.update(self.table(), refresh=True)
                 self.last_refresh = time.monotonic()
+
+    @staticmethod
+    def _elapsed(seconds):
+        minutes, seconds = divmod(int(seconds), 60)
+        hours, minutes = divmod(minutes, 60)
+        if hours:
+            return f"{hours}h {minutes:02d}m"
+        return f"{minutes}m {seconds:02d}s" if minutes else f"{seconds}s"
+
+    def _status(self, state):
+        terminal = {
+            "completed": ("Done", "green"),
+            "failed": ("Failed", "bold red"),
+            "interrupted": ("Stopped", "yellow"),
+            "stopped": ("Stopped", "yellow"),
+        }
+        if state["status"] in terminal and not state["active"]:
+            return terminal[state["status"]]
+        stages = {event["stage"] for event in state["active"].values()}
+        if stages & {"stacking_fold", "stacking_refit"}:
+            return "Stacking", "magenta"
+        searching = bool(stages & {"optimization", "optimization_fold", "trial"})
+        training = "fold" in stages
+        if searching and training:
+            return "Running", "cyan"
+        if searching:
+            return "Searching", "cyan"
+        if training:
+            return "Training", "cyan"
+        if "cv_folds" in stages:
+            return "Splitting", "cyan"
+        if state["status"] == "pending":
+            return "Queued", "dim"
+        if state["repeats"] == self.repeats:
+            return "Refitting", "magenta"
+        return "Starting", "yellow"
+
+    def _activity(self, state):
+        if not state["active"]:
+            if state["status"] == "pending":
+                waiting = "Waiting" if self.console.size.width < 80 else "Waiting for a slot"
+                return Text(waiting, style="dim", no_wrap=True)
+            if state["status"] == "completed":
+                score = state["metrics"].get("cv_mean")
+                parts = [f"CV mean {score:.4f}"] if score is not None else []
+                if state.get("elapsed_s") is not None:
+                    parts.append(self._elapsed(state["elapsed_s"]))
+                return Text(" · ".join(parts) or "Complete", style="green", no_wrap=True)
+            error = " ".join((state.get("error") or "—").splitlines())
+            return Text(error, style="dim", no_wrap=True, overflow="ellipsis")
+
+        # Nested model/repeat/trial observations describe the same work. Reduce
+        # them by repeat and trial, rather than displaying every event label.
+        groups = {}
+        priority = {
+            "optimization_fold": 0,
+            "fold": 0,
+            "stacking_fold": 0,
+            "stacking_refit": 0,
+            "cv_folds": 1,
+            "trial": 2,
+            "optimization": 3,
+            "repeat": 4,
+        }
+        for event in state["active"].values():
+            stage = event["stage"]
+            if stage not in priority:
+                continue
+            repeat = event.get("repeat") or 0
+            group = groups.setdefault(repeat, {"priority": 99, "events": []})
+            rank = priority[stage]
+            if rank < group["priority"]:
+                group.update(priority=rank, events=[])
+            if rank == group["priority"]:
+                group["events"].append(event)
+        lines = []
+        for repeat, group in sorted(groups.items()):
+            events = group["events"]
+            stages = {event["stage"] for event in events}
+            parts = [f"R{repeat}"] if repeat else []
+            trials = sorted({e["trial"] for e in events if e.get("trial") is not None})
+            if trials:
+                parts.append("Trial " + ",".join(map(str, trials)))
+            folds = {e["fold"] for e in events if e.get("fold") is not None}
+            if folds:
+                parts.append(f"{len(folds)} fold{'s' if len(folds) != 1 else ''}")
+            elif "cv_folds" in stages:
+                parts.append("Preparing CV splits")
+            elif "stacking_refit" in stages:
+                parts.append("Fitting base model")
+            elif "optimization" in stages:
+                parts.append("Choosing parameters")
+            elif not trials:
+                parts.append("Preparing folds")
+            lines.append(" · ".join(parts))
+        if len(lines) > 2:
+            lines = [lines[0], f"{len(lines) - 1} other repeats active"]
+        activity = "\n".join(lines) or "Saving / refitting model"
+        if self.console.size.width < 80:
+            activity = activity.replace("Trial ", "T")
+        if self.console.size.width < 60:
+            activity = activity.replace(" · ", " ").replace(" folds", "F").replace(" fold", "F")
+        return Text(activity, no_wrap=True, overflow="ellipsis")
 
     def table(self):
         finished = sum(
-            s["status"] in {"completed", "failed", "interrupted"} for s in self.models.values()
+            s["status"] in {"completed", "failed", "interrupted", "stopped"}
+            for s in self.models.values()
         )
+        width = self.console.size.width
+        wide, compact, tiny = width >= 110, width < 80, width < 60
         table = Table(
-            title=f"GPSE · {self.phase} · models {finished}/{len(self.models)} · {time.monotonic() - self.started:.0f}s",
+            box=box.SIMPLE_HEAD,
             expand=True,
+            show_edge=False,
+            padding=(0, 1),
+            border_style="bright_black",
+            header_style="bold",
         )
-        table.add_column("Model")
-        table.add_column("Status")
-        table.add_column("Repeats")
-        table.add_column("CV folds")
-        table.add_column("Active stages")
-        for name, state in self.models.items():
-            active = ", ".join(state["active"].values())
-            table.add_row(
-                Text(name),
-                state["status"],
-                f"{state['repeats']}/{self.repeats}",
-                f"{state['folds']}/{self.repeats * self.folds}",
-                Text(active),
+        table.add_column(
+            "Model",
+            ratio=2,
+            min_width=8 if tiny else 10 if compact else 15,
+            max_width=28,
+            no_wrap=True,
+            overflow="ellipsis",
+        )
+        table.add_column("Status", width=6 if tiny else 9, no_wrap=True)
+        if not compact:
+            table.add_column(
+                "Repeats" if wide else "Repeat",
+                width=7 if wide else 6,
+                justify="right",
+                no_wrap=True,
             )
-        return table
+        table.add_column(
+            "CV progress" if wide else "CV", width=21 if wide else 5 if tiny else 7, no_wrap=True
+        )
+        table.add_column(
+            "Activity",
+            ratio=3,
+            min_width=8 if tiny else 12 if compact else 18,
+            no_wrap=True,
+            overflow="ellipsis",
+        )
+        for name, state in self.models.items():
+            label, style = self._status(state)
+            if compact:
+                label = {
+                    "Searching": "Search",
+                    "Training": "Train",
+                    "Refitting": "Refit",
+                    "Splitting": "Split",
+                    "Starting": "Start",
+                    "Stacking": "Stack",
+                    "Stopped": "Stop",
+                }.get(label, label)
+            count = Text(
+                f"{state['folds']}/{self.repeats * self.folds}",
+                style="green" if state["status"] == "completed" else "dim",
+            )
+            if wide:
+                cv = Table.grid(padding=(0, 1))
+                cv.add_row(
+                    ProgressBar(
+                        total=self.repeats * self.folds,
+                        completed=state["folds"],
+                        width=10,
+                        style="grey23",
+                        complete_style="cyan",
+                        finished_style="green",
+                    ),
+                    count,
+                )
+            else:
+                cv = count
+            row = [
+                Text(name, style="bold" if state["status"] != "pending" else "dim"),
+                Text(label, style=style),
+            ]
+            if not compact:
+                row.append(Text(f"{state['repeats']}/{self.repeats}", style="dim"))
+            row.extend([cv, self._activity(state)])
+            table.add_row(*row)
+
+        running = sum(s["status"] == "started" for s in self.models.values())
+        queued = sum(s["status"] == "pending" for s in self.models.values())
+        header = Table.grid(expand=True)
+        header.add_column(ratio=1)
+        header.add_column(justify="right", no_wrap=True)
+        elapsed = self._elapsed(time.monotonic() - self.started)
+        summary = f"{finished}/{len(self.models)} models" + ("" if tiny else " finished")
+        detail = elapsed if tiny else f"{running} running · {queued} queued · {elapsed}"
+        header.add_row(Text(summary, style="bold"), Text(detail, style="dim"))
+        fit_stages = {"fold", "optimization_fold", "stacking_fold", "stacking_refit", "cv_folds"}
+        active_fits = sum(
+            event["stage"] in fit_stages
+            for state in self.models.values()
+            for event in state["active"].values()
+        )
+        footer = f"Active fits {active_fits}"
+        if self.pool:
+            if self.phase == "Training models":
+                footer += f"/{self.pool['worker_limit']}"
+            footer += f" · CPU budget {self.pool['cpu_budget']}"
+            threads = self.pool["threads_per_worker"]
+            footer += f" · {threads} {'thread' if threads == 1 else 'threads'}/fit"
+        if tiny:
+            footer = footer.replace("Active fits", "Fits").replace("CPU budget", "CPU")
+            footer = footer.replace("/fit", "")
+        return Panel(
+            Group(header, table, Text(footer, style="dim")),
+            title=Text(f"GPSE · {self.phase}", style="bold cyan"),
+            title_align="left",
+            border_style="bright_black",
+            padding=(0, 1),
+        )
 
     def start(self):
         if self.dynamic:
@@ -466,13 +664,25 @@ class ConsoleRenderer:
                 self.refresh()
                 self.console.print(Text(f"{event['level']} {tag} {event['message']}".strip()))
             return
-        self.phase = (
-            stage
-            if stage in {"run", "data", "selection", "stacking", "holdout", "reports"}
-            else self.phase
-        )
+        phases = {
+            "data": "Preparing data",
+            "selection": "Model selection",
+            "stacking": "Stacking ensemble",
+            "holdout": "Holdout evaluation",
+            "reports": "Writing reports",
+        }
+        self.phase = phases.get(stage, self.phase)
+        if stage == "scheduler" and status == "configured":
+            fields = ("cpu_budget", "worker_limit", "threads_per_worker")
+            if all(event.get(field) is not None for field in fields):
+                self.pool = {field: event[field] for field in fields}
         if stage == "run":
             self.phase = "Initializing" if status == "started" else status.title()
+            if status in {"interrupted", "failed"}:
+                for state in self.models.values():
+                    state["active"].clear()
+                    if state["status"] not in {"completed", "failed", "interrupted"}:
+                        state["status"] = "interrupted" if status == "interrupted" else "stopped"
         elif stage == "model" and status == "started":
             self.phase = "Training models"
         if model in self.models:
@@ -480,12 +690,14 @@ class ConsoleRenderer:
             key = event.get("execution_id", event["event_id"])
             if stage == "model":
                 state["status"] = status
-            if status == "started":
-                label = stage
-                for field, prefix in (("repeat", "R"), ("fold", "F"), ("trial", "T")):
+                state["metrics"] = event.get("metrics") or {}
+                for field in ("elapsed_s", "error"):
                     if event.get(field) is not None:
-                        label += f" {prefix}{event[field]}"
-                state["active"][key] = label
+                        state[field] = event[field]
+            if status == "started":
+                state["active"][key] = {
+                    field: event.get(field) for field in ("stage", "repeat", "fold", "trial")
+                }
             else:
                 state["active"].pop(key, None)
                 if stage == "repeat" and status == "completed":

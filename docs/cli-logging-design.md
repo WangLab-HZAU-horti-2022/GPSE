@@ -40,6 +40,8 @@ gpse train ... > train.txt 2>&1
 
 `-l DEBUG` 兼容旧命令。`--log-level WARNING/ERROR/CRITICAL` 继续限制普通日志的严重级别。非 TTY、`CI` 非空或 `TERM=dumb` 自动关闭动态显示及颜色；无需手动关闭进度。
 
+动态界面使用轻量圆角边框和紧凑模型行，顶部显示完成数、运行/排队数与耗时。`Activity` 按 repeat 合并嵌套阶段，例如 `R1 · Trial 3 · 5 folds`，每个模型最多两行，避免逐条展开搜索 fold。`CV progress` 只统计已完成的训练折，搜索中的折数在 Activity 展示；宽终端显示进度条，窄终端保留计数并简化列。完成后显示 CV Mean，失败和中断使用独立状态配色。底部显示观测到的活跃拟合数及配置预算，不代表 CPU 使用率。界面渲染最多每秒 4 次，完整事件仍逐条写入日志。可查看[示例界面](26.10.23/training-progress-preview.png)，其中数值为演示事件。
+
 并行参数的显式值（包括 `1`、`--repeat_workers=1` 和 argparse 缩写）优先于 `--threads` 推导。当前共享池的 CPU budget、worker limit 与 native threads 是容量上限，不能解释为实测 CPU 使用率。共享计算池执行 Optuna 和常规 CV 的独立 fold，父进程的线程负责 repeat/study 流程控制；同一 study 的 trial 保持顺序。冻结参数模式先固定一次搜索的参数，之后并行执行独立 Repeat。`scheduler/submitted` 的 `queue=compute` 代表实际计算任务，`queue=controller` 代表外层流程任务；计算并发应由 fold 事件重建，不能使用 repeat 的 PID 或整个 repeat 的时长代替。
 
 ### 日志产物

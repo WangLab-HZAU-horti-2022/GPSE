@@ -1,0 +1,699 @@
+{
+  "scope": "Same 120-sample, 2048-SNP synthetic inputs as the original numerical reproduction; no remote user data",
+  "cases": [
+    {
+      "case": "old_absolute_rbf",
+      "fold": 1,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963,
+        "numerical_policy": "legacy"
+      },
+      "kernel_parameters": {
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963,
+        "gamma_scale": null,
+        "effective_gamma": 0.33981724150105963,
+        "feature_count": 2048,
+        "numerical_policy": "legacy"
+      },
+      "error": null,
+      "warnings": [],
+      "prediction_range": 0.0,
+      "pearson": null
+    },
+    {
+      "case": "old_absolute_rbf",
+      "fold": 2,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963,
+        "numerical_policy": "legacy"
+      },
+      "kernel_parameters": {
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963,
+        "gamma_scale": null,
+        "effective_gamma": 0.33981724150105963,
+        "feature_count": 2048,
+        "numerical_policy": "legacy"
+      },
+      "error": null,
+      "warnings": [],
+      "prediction_range": 0.0,
+      "pearson": null
+    },
+    {
+      "case": "old_absolute_rbf",
+      "fold": 3,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963,
+        "numerical_policy": "legacy"
+      },
+      "kernel_parameters": {
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963,
+        "gamma_scale": null,
+        "effective_gamma": 0.33981724150105963,
+        "feature_count": 2048,
+        "numerical_policy": "legacy"
+      },
+      "error": null,
+      "warnings": [],
+      "prediction_range": 0.0,
+      "pearson": null
+    },
+    {
+      "case": "old_absolute_rbf",
+      "fold": 4,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963,
+        "numerical_policy": "legacy"
+      },
+      "kernel_parameters": {
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963,
+        "gamma_scale": null,
+        "effective_gamma": 0.33981724150105963,
+        "feature_count": 2048,
+        "numerical_policy": "legacy"
+      },
+      "error": null,
+      "warnings": [],
+      "prediction_range": 0.0,
+      "pearson": null
+    },
+    {
+      "case": "old_absolute_rbf",
+      "fold": 5,
+      "params": {
+        "alpha": 0.6218704727769077,
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963,
+        "numerical_policy": "legacy"
+      },
+      "kernel_parameters": {
+        "kernel": "rbf",
+        "gamma": 0.33981724150105963,
+        "gamma_scale": null,
+        "effective_gamma": 0.33981724150105963,
+        "feature_count": 2048,
+        "numerical_policy": "legacy"
+      },
+      "error": null,
+      "warnings": [],
+      "prediction_range": 0.0,
+      "pearson": null
+    },
+    {
+      "case": "scaled_rbf",
+      "fold": 1,
+      "params": {
+        "kernel": "rbf",
+        "alpha": 0.6218704727769077,
+        "gamma_scale": 1.0,
+        "numerical_policy": "raise"
+      },
+      "kernel_parameters": {
+        "kernel": "rbf",
+        "gamma": null,
+        "gamma_scale": 1.0,
+        "effective_gamma": 0.00048828125,
+        "feature_count": 2048,
+        "numerical_policy": "raise"
+      },
+      "error": null,
+      "warnings": [],
+      "prediction_range": 0.5381223301676548,
+      "pearson": -0.014632983863662387
+    },
+    {
+      "case": "scaled_rbf",
+      "fold": 2,
+      "params": {
+        "kernel": "rbf",
+        "alpha": 0.6218704727769077,
+        "gamma_scale": 1.0,
+        "numerical_policy": "raise"
+      },
+      "kernel_parameters": {
+        "kernel": "rbf",
+        "gamma": null,
+        "gamma_scale": 1.0,
+        "effective_gamma": 0.00048828125,
+        "feature_count": 2048,
+        "numerical_policy": "raise"
+      },
+      "error": null,
+      "warnings": [],
+      "prediction_range": 0.3390563769246573,
+      "pearson": 0.42142670886379285
+    },
+    {
+      "case": "scaled_rbf",
+      "fold": 3,
+      "params": {
+        "kernel": "rbf",
+        "alpha": 0.6218704727769077,
+        "gamma_scale": 1.0,
+        "numerical_policy": "raise"
+      },
+      "kernel_parameters": {
+        "kernel": "rbf",
+        "gamma": null,
+        "gamma_scale": 1.0,
+        "effective_gamma": 0.00048828125,
+        "feature_count": 2048,
+        "numerical_policy": "raise"
+      },
+      "error": null,
+      "warnings": [],
+      "prediction_range": 0.4087806280499131,
+      "pearson": 0.06535902745448315
+    },
+    {
+      "case": "scaled_rbf",
+      "fold": 4,
+      "params": {
+        "kernel": "rbf",
+        "alpha": 0.6218704727769077,
+        "gamma_scale": 1.0,
+        "numerical_policy": "raise"
+      },
+      "kernel_parameters": {
+        "kernel": "rbf",
+        "gamma": null,
+        "gamma_scale": 1.0,
+        "effective_gamma": 0.00048828125,
+        "feature_count": 2048,
+        "numerical_policy": "raise"
+      },
+      "error": null,
+      "warnings": [],
+      "prediction_range": 0.45193055470747256,
+      "pearson": 0.036198770805914854
+    },
+    {
+      "case": "scaled_rbf",
+      "fold": 5,
+      "params": {
+        "kernel": "rbf",
+        "alpha": 0.6218704727769077,
+        "gamma_scale": 1.0,
+        "numerical_policy": "raise"
+      },
+      "kernel_parameters": {
+        "kernel": "rbf",
+        "gamma": null,
+        "gamma_scale": 1.0,
+        "effective_gamma": 0.00048828125,
+        "feature_count": 2048,
+        "numerical_policy": "raise"
+      },
+      "error": null,
+      "warnings": [],
+      "prediction_range": 0.2913130706907012,
+      "pearson": 0.059736565317818596
+    },
+    {
+      "case": "old_sigmoid_fallback",
+      "fold": 1,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893,
+        "numerical_policy": "legacy"
+      },
+      "kernel_parameters": {
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "gamma_scale": null,
+        "effective_gamma": 0.09384800715909536,
+        "feature_count": 2048,
+        "numerical_policy": "legacy"
+      },
+      "error": null,
+      "warnings": [
+        "Singular matrix in solving dual problem. Using least-squares solution instead."
+      ],
+      "prediction_range": 93.82638779543456,
+      "pearson": 0.09044761921575485
+    },
+    {
+      "case": "old_sigmoid_fallback",
+      "fold": 2,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893,
+        "numerical_policy": "legacy"
+      },
+      "kernel_parameters": {
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "gamma_scale": null,
+        "effective_gamma": 0.09384800715909536,
+        "feature_count": 2048,
+        "numerical_policy": "legacy"
+      },
+      "error": null,
+      "warnings": [
+        "Singular matrix in solving dual problem. Using least-squares solution instead."
+      ],
+      "prediction_range": 29.58314620801123,
+      "pearson": 0.28080571813683886
+    },
+    {
+      "case": "old_sigmoid_fallback",
+      "fold": 3,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893,
+        "numerical_policy": "legacy"
+      },
+      "kernel_parameters": {
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "gamma_scale": null,
+        "effective_gamma": 0.09384800715909536,
+        "feature_count": 2048,
+        "numerical_policy": "legacy"
+      },
+      "error": null,
+      "warnings": [
+        "Singular matrix in solving dual problem. Using least-squares solution instead."
+      ],
+      "prediction_range": 150.92590236467322,
+      "pearson": -0.36250729790616265
+    },
+    {
+      "case": "old_sigmoid_fallback",
+      "fold": 4,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893,
+        "numerical_policy": "legacy"
+      },
+      "kernel_parameters": {
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "gamma_scale": null,
+        "effective_gamma": 0.09384800715909536,
+        "feature_count": 2048,
+        "numerical_policy": "legacy"
+      },
+      "error": null,
+      "warnings": [
+        "Singular matrix in solving dual problem. Using least-squares solution instead."
+      ],
+      "prediction_range": 41.089361320751536,
+      "pearson": -0.12356378871182819
+    },
+    {
+      "case": "old_sigmoid_fallback",
+      "fold": 5,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893,
+        "numerical_policy": "legacy"
+      },
+      "kernel_parameters": {
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "gamma_scale": null,
+        "effective_gamma": 0.09384800715909536,
+        "feature_count": 2048,
+        "numerical_policy": "legacy"
+      },
+      "error": null,
+      "warnings": [
+        "Singular matrix in solving dual problem. Using least-squares solution instead."
+      ],
+      "prediction_range": 81.02389773983558,
+      "pearson": -0.13017496275278503
+    },
+    {
+      "case": "strict_sigmoid_rejected",
+      "fold": 1,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893,
+        "numerical_policy": "raise"
+      },
+      "kernel_parameters": {
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "gamma_scale": null,
+        "effective_gamma": 0.09384800715909536,
+        "feature_count": 2048,
+        "numerical_policy": "raise"
+      },
+      "error": "Unstable sigmoid kernel solve (alpha=0.06516990611177176, effective_gamma=0.09384800715909536): Matrix is singular.",
+      "warnings": [],
+      "prediction_range": null,
+      "pearson": null
+    },
+    {
+      "case": "strict_sigmoid_rejected",
+      "fold": 2,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893,
+        "numerical_policy": "raise"
+      },
+      "kernel_parameters": {
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "gamma_scale": null,
+        "effective_gamma": 0.09384800715909536,
+        "feature_count": 2048,
+        "numerical_policy": "raise"
+      },
+      "error": "Unstable sigmoid kernel solve (alpha=0.06516990611177176, effective_gamma=0.09384800715909536): Matrix is singular.",
+      "warnings": [],
+      "prediction_range": null,
+      "pearson": null
+    },
+    {
+      "case": "strict_sigmoid_rejected",
+      "fold": 3,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893,
+        "numerical_policy": "raise"
+      },
+      "kernel_parameters": {
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "gamma_scale": null,
+        "effective_gamma": 0.09384800715909536,
+        "feature_count": 2048,
+        "numerical_policy": "raise"
+      },
+      "error": "Unstable sigmoid kernel solve (alpha=0.06516990611177176, effective_gamma=0.09384800715909536): Matrix is singular.",
+      "warnings": [],
+      "prediction_range": null,
+      "pearson": null
+    },
+    {
+      "case": "strict_sigmoid_rejected",
+      "fold": 4,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893,
+        "numerical_policy": "raise"
+      },
+      "kernel_parameters": {
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "gamma_scale": null,
+        "effective_gamma": 0.09384800715909536,
+        "feature_count": 2048,
+        "numerical_policy": "raise"
+      },
+      "error": "Unstable sigmoid kernel solve (alpha=0.06516990611177176, effective_gamma=0.09384800715909536): Matrix is singular.",
+      "warnings": [],
+      "prediction_range": null,
+      "pearson": null
+    },
+    {
+      "case": "strict_sigmoid_rejected",
+      "fold": 5,
+      "params": {
+        "alpha": 0.06516990611177176,
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "coef0": 3.567533266935893,
+        "numerical_policy": "raise"
+      },
+      "kernel_parameters": {
+        "kernel": "sigmoid",
+        "gamma": 0.09384800715909536,
+        "gamma_scale": null,
+        "effective_gamma": 0.09384800715909536,
+        "feature_count": 2048,
+        "numerical_policy": "raise"
+      },
+      "error": "Unstable sigmoid kernel solve (alpha=0.06516990611177176, effective_gamma=0.09384800715909536): Matrix is singular.",
+      "warnings": [],
+      "prediction_range": null,
+      "pearson": null
+    }
+  ],
+  "default_search": {
+    "best_params": {
+      "alpha": 0.011527987128232402,
+      "kernel": "rbf",
+      "gamma": null,
+      "numerical_policy": "raise",
+      "gamma_scale": 7.579479953348009
+    },
+    "best_value": 0.0901314710559484,
+    "n_trials": 10,
+    "requested_n_trials": 10,
+    "effective_n_trials": 10,
+    "early_stopped": false,
+    "objective": "mean_cv_score - cv_stability_penalty * std_cv_score",
+    "cv_stability_penalty": 0.5,
+    "feature_selection": {
+      "method": "none",
+      "select_k": 5000,
+      "variance_threshold": 0.0,
+      "select_percentile": null
+    },
+    "genotype_imputation": {
+      "method": "none",
+      "missing_genotype_code": 3.0
+    },
+    "top_trials": [
+      {
+        "number": 1,
+        "objective": 0.0901314710559484,
+        "cv_mean": 0.12313223911363673,
+        "cv_std": 0.06600153611537664,
+        "params": {
+          "kernel": "rbf",
+          "alpha": 0.011527987128232402,
+          "gamma_scale": 7.579479953348009
+        }
+      },
+      {
+        "number": 8,
+        "objective": 0.05463864505089658,
+        "cv_mean": 0.10324359635830867,
+        "cv_std": 0.09720990261482418,
+        "params": {
+          "kernel": "laplacian",
+          "alpha": 6.58410616012161,
+          "gamma_scale": 3.7958531426706403
+        }
+      },
+      {
+        "number": 6,
+        "objective": 0.024580459011200817,
+        "cv_mean": 0.09921101333694768,
+        "cv_std": 0.14926110865149372,
+        "params": {
+          "kernel": "linear",
+          "alpha": 0.012681352169084602
+        }
+      },
+      {
+        "number": 4,
+        "objective": 0.024580442222990065,
+        "cv_mean": 0.09921099963099692,
+        "cv_std": 0.1492611148160137,
+        "params": {
+          "kernel": "linear",
+          "alpha": 0.013783237455007183
+        }
+      },
+      {
+        "number": 2,
+        "objective": 0.02457940566441852,
+        "cv_mean": 0.09921015331451485,
+        "cv_std": 0.14926149530019267,
+        "params": {
+          "kernel": "linear",
+          "alpha": 0.08179499475211674
+        }
+      }
+    ]
+  },
+  "trial_states": [
+    {
+      "trial": 1,
+      "state": "COMPLETE",
+      "params": {
+        "alpha": 0.02938027938703535,
+        "kernel": "rbf",
+        "gamma": null,
+        "numerical_policy": "raise",
+        "gamma_scale": 0.004207053950287938
+      },
+      "reason": null
+    },
+    {
+      "trial": 2,
+      "state": "COMPLETE",
+      "params": {
+        "alpha": 0.011527987128232402,
+        "kernel": "rbf",
+        "gamma": null,
+        "numerical_policy": "raise",
+        "gamma_scale": 7.579479953348009
+      },
+      "reason": null
+    },
+    {
+      "trial": 3,
+      "state": "COMPLETE",
+      "params": {
+        "alpha": 0.08179499475211674,
+        "kernel": "linear",
+        "gamma": null,
+        "numerical_policy": "raise"
+      },
+      "reason": null
+    },
+    {
+      "trial": 4,
+      "state": "COMPLETE",
+      "params": {
+        "alpha": 0.02621087878265441,
+        "kernel": "polynomial",
+        "gamma": null,
+        "numerical_policy": "raise",
+        "gamma_scale": 0.01474275315991467,
+        "degree": 3,
+        "coef0": 4.56069984217036
+      },
+      "reason": null
+    },
+    {
+      "trial": 5,
+      "state": "COMPLETE",
+      "params": {
+        "alpha": 0.013783237455007183,
+        "kernel": "linear",
+        "gamma": null,
+        "numerical_policy": "raise"
+      },
+      "reason": null
+    },
+    {
+      "trial": 6,
+      "state": "COMPLETE",
+      "params": {
+        "alpha": 7.886714129990489,
+        "kernel": "polynomial",
+        "gamma": null,
+        "numerical_policy": "raise",
+        "gamma_scale": 1.7123375973163988,
+        "degree": 3,
+        "coef0": 0.9767211400638387
+      },
+      "reason": null
+    },
+    {
+      "trial": 7,
+      "state": "COMPLETE",
+      "params": {
+        "alpha": 0.012681352169084602,
+        "kernel": "linear",
+        "gamma": null,
+        "numerical_policy": "raise"
+      },
+      "reason": null
+    },
+    {
+      "trial": 8,
+      "state": "COMPLETE",
+      "params": {
+        "alpha": 0.3632486956676606,
+        "kernel": "linear",
+        "gamma": null,
+        "numerical_policy": "raise"
+      },
+      "reason": null
+    },
+    {
+      "trial": 9,
+      "state": "COMPLETE",
+      "params": {
+        "alpha": 6.58410616012161,
+        "kernel": "laplacian",
+        "gamma": null,
+        "numerical_policy": "raise",
+        "gamma_scale": 3.7958531426706403
+      },
+      "reason": null
+    },
+    {
+      "trial": 10,
+      "state": "COMPLETE",
+      "params": {
+        "alpha": 0.013667272915456224,
+        "kernel": "rbf",
+        "gamma": null,
+        "numerical_policy": "raise",
+        "gamma_scale": 0.02001342062287998
+      },
+      "reason": null
+    }
+  ],
+  "validation": {
+    "baseline_constant_rbf_folds": 5,
+    "scaled_rbf_valid_folds": 5,
+    "baseline_sigmoid_fallbacks": 5,
+    "strict_sigmoid_rejections_without_fallback": 5,
+    "default_complete_trials": 10
+  },
+  "source_sha256": {
+    "gpse/config/models.yaml": "d2d8f54a3b0d6c3fc1ebc296bc54356cf712771436f38ae88dd1ffeaae6afd53",
+    "gpse/models/regression_model_optimizer.py": "e46871189611ab039ca24e7f3d478f6b0d69ae663a2e45759bc806e4801523c9",
+    "gpse/models/safe_kernel_ridge.py": "cf26781c878ce31916b7f80b3a85fc585b1f7a9d365c3355027e6894089b753b",
+    "gpse/train/_optimization.py": "f669c2e23fedcdb72ea2dbfa414e2ada76cb84049c0e4e9432bc1068931fb04b",
+    "gpse/train/_fold_training.py": "727690a00665cebf1f8ad98411bb7d17d43e8296b46e21a57c0d5ed982a9d7a3"
+  },
+  "tests": {
+    "new_kernel_policy_tests": "14 passed in 12.27s",
+    "new_kernel_policy_log": "/tmp/gpse-gamma-new-tests.log",
+    "full_suite": "271 passed, 1 existing failure in 111.20s",
+    "full_suite_log": "/tmp/gpse-gamma-full-tests.log",
+    "existing_failure": "tests/test_audit_fixes.py::test_find_result_file_depth_limit",
+    "new_test_coverage": [
+      "feature duplication invariance",
+      "post-feature-selection dimensions",
+      "absolute gamma and old joblib state compatibility",
+      "clone and saved-model prediction consistency",
+      "sigmoid rejection without least-squares fallback",
+      "ill-conditioned/non-finite matrix rejection",
+      "fixed YAML parameter persistence",
+      "real serial/fold-pool equality",
+      "whole-trial pruning and warning aggregation"
+    ]
+  }
+}
