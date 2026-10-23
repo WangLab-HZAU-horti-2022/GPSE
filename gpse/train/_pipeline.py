@@ -312,13 +312,19 @@ def run_all_models(
     model_failures = {}
     model_workers = min(self.max_parallel_jobs, len(models))
 
-    if model_workers > 1:
+    if getattr(self, "cpu_budget", None) is not None:
+        from gpse.train._scheduler import run_budgeted_models
+        all_model_results, model_failures = run_budgeted_models(
+            self, models, X, y, cv_pheno_data, fixed_test_indices
+        )
+    elif model_workers > 1:
         main_logger.info(f"Using {model_workers} parallel model workers")
         with graceful_process_pool(
             max_workers=model_workers,
             initializer=_init_model_worker_threads,
             initargs=(self.n_threads, get_client_config()),
             logger=main_logger,
+            native_threads=self.n_threads,
         ) as executor:
             futures = {
                 executor.submit(
@@ -437,6 +443,7 @@ def run_all_models(
                 cv_folds=cv_folds,
                 random_seed=self.random_seed,
                 n_threads=self.n_threads,
+                cpu_budget=getattr(self, "cpu_budget", None),
                 use_default_params=self.use_default_params,
                 task_type=self.task_type,
                 feature_selection_config=self.feature_selection_config,

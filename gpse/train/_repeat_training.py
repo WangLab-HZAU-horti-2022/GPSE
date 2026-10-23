@@ -186,6 +186,10 @@ def train_and_evaluate_model_for_repeat(
     test_indices: np.ndarray = None,
     task_logger=None,
     cv_pheno_data=None,
+    fold_runner=None,
+    optimization_fold_runner=None,
+    data_partition=None,
+    cv_folds=None,
 ) -> Dict[str, Any]:
     """
     Train and evaluate a model for one repeat.
@@ -216,7 +220,8 @@ def train_and_evaluate_model_for_repeat(
         task_logger = main_logger
 
     repeat_seed = generate_repeat_seed(self.random_seed, repeat_idx)
-    np.random.seed(repeat_seed)
+    if fold_runner is None:
+        np.random.seed(repeat_seed)
 
     task_logger.opt(colors=True).info(
         f"Model <b><cyan>{model_name}</cyan></b> "
@@ -229,7 +234,9 @@ def train_and_evaluate_model_for_repeat(
         )
 
     repeat_dir = create_repeat_result_directory(self.paths.models_dir, model_name, repeat_idx)
-    if test_indices is None:
+    if data_partition is not None:
+        train_indices, test_indices, X_train, y_train, X_test, y_test = data_partition
+    elif test_indices is None:
         train_indices, test_indices = create_holdout_indices(
             y,
             self.test_size,
@@ -243,8 +250,9 @@ def train_and_evaluate_model_for_repeat(
     else:
         test_indices = np.asarray(test_indices)
         train_indices = np.setdiff1d(np.arange(len(X)), test_indices, assume_unique=True)
-    X_train, y_train = X.iloc[train_indices], y.iloc[train_indices]
-    X_test, y_test = X.iloc[test_indices], y.iloc[test_indices]
+    if data_partition is None:
+        X_train, y_train = X.iloc[train_indices], y.iloc[train_indices]
+        X_test, y_test = X.iloc[test_indices], y.iloc[test_indices]
     y_test_original = y_test.copy()
     phenotype_scaler = None
     if self.task_type == "regression" and self.standardize_phenotype:
@@ -260,7 +268,7 @@ def train_and_evaluate_model_for_repeat(
         f"Holdout size: <green>{len(test_indices)}</green>"
     )
 
-    folds = self.generate_cv_folds_from_file(
+    folds = cv_folds if cv_folds is not None else self.generate_cv_folds_from_file(
         X_train, y_train, cv_pheno_data, repeat_idx, task_logger
     )
     cv_folds_path = self.save_train_only_cv_folds(X_train, folds, repeat_dir)
@@ -277,8 +285,13 @@ def train_and_evaluate_model_for_repeat(
             "early_stopped": False,
         }
     else:
+        optimization_kwargs = (
+            {"fold_runner": optimization_fold_runner, "cv_folds": folds}
+            if optimization_fold_runner is not None else {}
+        )
         optimization_info = self.optimize_model_parameters(
-            X_train, y_train, model_name, repeat_idx, task_logger, cv_pheno_data
+            X_train, y_train, model_name, repeat_idx, task_logger, cv_pheno_data,
+            **optimization_kwargs,
         )
         params = optimization_info["best_params"]
         import json
@@ -288,8 +301,17 @@ def train_and_evaluate_model_for_repeat(
 
     fold_results = []
     all_predictions = {"train": [], "val": [], "test": []}
+    ensemble_predictions = []
 
-    for fold_idx, (train_idx, val_idx) in enumerate(folds):
+    if fold_runner is not None:
+        for fold_result, predictions, ensemble in fold_runner(params, folds, repeat_dir):
+            if fold_result:
+                fold_results.append(fold_result)
+                for split in all_predictions:
+                    all_predictions[split].extend(predictions[split])
+                ensemble_predictions.extend(ensemble)
+
+    for fold_idx, (train_idx, val_idx) in enumerate(folds if fold_runner is None else []):
         fold_seed = generate_fold_seed(self.random_seed, repeat_idx, fold_idx)
         np.random.seed(fold_seed)
         task_logger.debug(f"Training fold {fold_idx + 1}/{self.n_splits}...")
@@ -311,6 +333,7 @@ def train_and_evaluate_model_for_repeat(
             repeat_dir,
             all_predictions,
             task_logger,
+            ensemble_predictions=ensemble_predictions,
         )
         if fold_result:
             fold_results.append(fold_result)
@@ -338,6 +361,7 @@ def train_and_evaluate_model_for_repeat(
             task_logger,
             y_test_original=y_test_original,
             phenotype_scaler=phenotype_scaler,
+            fold_predictions=ensemble_predictions,
         )
     else:
         task_logger.error("All folds failed, cannot compute average performance")
@@ -423,7 +447,14 @@ def run_model_multiple_repeats(
 
     all_repeat_results = []
 
-    if self.repeat_workers > 1 and self.optuna_per_repeat:
+    if self.repeat_workers > 1:
+        first_parallel_repeat = 0
+        if not self.optuna_per_repeat and not self.use_default_params and model_name != "gblup_reg":
+            # Preserve one frozen search, then share its parameters with spawned repeats.
+            all_repeat_results.append(self.train_and_evaluate_model_for_repeat(
+                model_name, X, y, 0, test_indices, task_logger=None, cv_pheno_data=cv_pheno_data
+            ))
+            first_parallel_repeat = 1
         main_logger.info(f"Using {self.repeat_workers} parallel repeat workers")
 
         with graceful_process_pool(
@@ -432,6 +463,7 @@ def run_model_multiple_repeats(
             initializer=_init_worker_threads,
             initargs=(self.n_threads, get_client_config()),
             logger=main_logger,
+            native_threads=self.n_threads,
         ) as executor:
             futures = [
                 executor.submit(
@@ -443,7 +475,7 @@ def run_model_multiple_repeats(
                     test_indices,
                     cv_pheno_data,
                 )
-                for repeat_idx in range(self.n_repeats)
+                for repeat_idx in range(first_parallel_repeat, self.n_repeats)
             ]
 
             for i, future in enumerate(as_completed(futures)):
@@ -457,11 +489,6 @@ def run_model_multiple_repeats(
         # Collect subprocess logs into the main log after all parallel tasks finish
         collect_subprocess_logs(self.logs_dir, main_logger)
     else:
-        if self.repeat_workers > 1 and not self.optuna_per_repeat:
-            main_logger.info(
-                "Executing repeats sequentially so frozen Optuna parameters can be reused "
-                "after repeat 1; set --optuna_per_repeat to enable parallel independent searches"
-            )
         main_logger.info("Executing training sequentially")
         for repeat_idx in range(self.n_repeats):
             try:
@@ -478,6 +505,11 @@ def run_model_multiple_repeats(
             except Exception as e:
                 main_logger.error(f"Repeat {repeat_idx + 1} execution failed: {str(e)}")
 
+    return aggregate_model_repeats(self, model_name, X, y, all_repeat_results, model_dir)
+
+
+def aggregate_model_repeats(self, model_name, X, y, all_repeat_results, model_dir):
+    """Existing aggregation/refit logic, shared by manual and budget schedulers."""
     if all_repeat_results:
         all_repeat_results.sort(key=lambda r: r["repeat_idx"])
         try:

@@ -149,26 +149,12 @@ def _dry_run_trait_summary(argv: list[str]) -> list[str]:
     parallelism and key settings each trait will run with.
     """
     from gpse.config import ModelConstants
-    from gpse.train.cli import _resolve_model_count
     from gpse.train.workflow import _build_parser
-    from gpse.utils.parallel import derive_parallelism_from_threads
 
     args = _build_parser().parse_args(argv)
-    n_jobs, max_workers, repeat_workers = (
-        args.n_jobs,
-        args.max_workers,
-        args.repeat_workers,
-    )
-    if args.threads is not None:
-        n_jobs, max_workers, repeat_workers = derive_parallelism_from_threads(
-            threads=args.threads,
-            n_models=_resolve_model_count(args),
-            n_repeats=args.n_repeats,
-            n_jobs=n_jobs,
-            max_workers=max_workers,
-            repeat_workers=repeat_workers,
-            explicit=getattr(args, "_explicit_parallel", set()),
-        )
+    from gpse.train.cli import _apply_threads_budget
+    _apply_threads_budget(args, log=False)
+    n_jobs, max_workers, repeat_workers = args.n_jobs, args.max_workers, args.repeat_workers
 
     lines = [
         f"  Results directory: {args.results_dir}",

@@ -119,28 +119,41 @@ def _compute_ensemble_predictions(
     task_logger,
     y_test_original=None,
     phenotype_scaler=None,
+    fold_predictions=None,
 ) -> Dict[str, float]:
-    """Compute fold-ensemble predictions and return metrics."""
+    """Ensemble existing fold outputs; support standalone artifact evaluation.
+
+    Normal repeat training supplies ``fold_predictions`` so model persistence
+    never controls whether CV estimators need to be fitted a second time.
+    """
 
     def transform_for_member(scaler, selector, imputer, features):
-        transformed = transform_genotypes(
-            imputer, features, self.genotype_imputation_config
-        )
+        transformed = transform_genotypes(imputer, features, self.genotype_imputation_config)
         transformed = transform_features(selector, transformed)
         return scaler.transform(transformed) if scaler is not None else transformed
 
     try:
         import joblib
 
-        # Load or retrain models
-        if self.save_models:
+        # The legacy standalone entry can load/refit members. A training repeat
+        # always supplies the outputs from its original fitted CV estimators.
+        if fold_predictions is not None:
+            ensemble_models = []
+            if len(fold_predictions) != self.n_splits:
+                raise ValueError("Fold ensemble requires every configured CV fold to succeed")
+            task_logger.info(
+                f"Reusing holdout predictions from {len(fold_predictions)} fitted CV folds"
+            )
+        elif self.save_models:
             ensemble_models = []
             for fold_idx in range(self.n_splits):
                 fold_model_path = repeat_dir / f"fold_{fold_idx + 1}_model.pkl"
                 if fold_model_path.exists():
                     artifact = joblib.load(fold_model_path)
                     model, scaler, selector = unpack_model_artifact(artifact)
-                    ensemble_models.append((model, scaler, selector, get_artifact_imputer(artifact)))
+                    ensemble_models.append(
+                        (model, scaler, selector, get_artifact_imputer(artifact))
+                    )
         else:
             ensemble_models = []
             for fold_idx, (train_idx, val_idx) in enumerate(folds):
@@ -165,17 +178,25 @@ def _compute_ensemble_predictions(
                     )
                 )
 
-        # Compute ensemble predictions
-        if self.task_type == "classification":
-            ensemble_preds = []
-            ensemble_probas = []
+        if fold_predictions is None:
+            fold_predictions = []
             for model, scaler, selector, imputer in ensemble_models:
                 X_test_transformed = transform_for_member(scaler, selector, imputer, X_test)
-                ensemble_preds.append(model.predict(X_test_transformed))
-                if hasattr(model, "predict_proba"):
-                    ensemble_probas.append(model.predict_proba(X_test_transformed))
+                predictions = model.predict(X_test_transformed)
+                probabilities = (
+                    model.predict_proba(X_test_transformed)
+                    if self.task_type == "classification" and hasattr(model, "predict_proba")
+                    else None
+                )
+                fold_predictions.append((predictions, probabilities))
+
+        # Compute ensemble predictions in the original fold order.
+        if self.task_type == "classification":
+            ensemble_probas = []
+            for pred, probabilities in fold_predictions:
+                if probabilities is not None:
+                    ensemble_probas.append(probabilities)
                 else:
-                    pred = ensemble_preds[-1]
                     n_classes = getattr(self, "n_classes", int(np.max(pred)) + 1)
                     prob = np.zeros((len(pred), n_classes))
                     prob[np.arange(len(pred)), pred.astype(int)] = 1.0
@@ -185,12 +206,15 @@ def _compute_ensemble_predictions(
             if ensemble_proba is not None:
                 ensemble_pred = np.argmax(ensemble_proba, axis=1)
             else:
+                ensemble_preds = [pred for pred, _ in fold_predictions]
                 pred_matrix = np.asarray(ensemble_preds)
                 n_classes = getattr(self, "n_classes", int(np.max(pred_matrix)) + 1)
-                ensemble_pred = np.array([
-                    np.bincount(row.astype(int), minlength=n_classes).argmax()
-                    for row in pred_matrix.T
-                ])
+                ensemble_pred = np.array(
+                    [
+                        np.bincount(row.astype(int), minlength=n_classes).argmax()
+                        for row in pred_matrix.T
+                    ]
+                )
             ensemble_metrics = self.genomic_classifier.calculate_classification_metrics(
                 y_test, ensemble_pred, ensemble_proba
             )
@@ -204,10 +228,7 @@ def _compute_ensemble_predictions(
             if "pr_auc" in ensemble_metrics:
                 task_logger.info(f"  PR-AUC: {ensemble_metrics['pr_auc']:.6f}")
         else:
-            ensemble_preds = []
-            for model, scaler, selector, imputer in ensemble_models:
-                X_test_transformed = transform_for_member(scaler, selector, imputer, X_test)
-                ensemble_preds.append(model.predict(X_test_transformed))
+            ensemble_preds = [pred for pred, _ in fold_predictions]
             ensemble_pred = np.mean(ensemble_preds, axis=0)
             metric_y_test = y_test_original if y_test_original is not None else y_test
             metric_predictions = ensemble_pred

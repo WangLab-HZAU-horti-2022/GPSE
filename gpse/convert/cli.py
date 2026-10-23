@@ -18,8 +18,10 @@ from datetime import datetime
 from gpse.convert.workflow import run_convert_workflow, validate_convert_mode
 from gpse.utils.cli_display import _build_convert_parser
 from gpse.utils.log_utils import logger_init
+from gpse.utils.process_control import interruptible_entry
 
 # define convert main function
+@interruptible_entry
 def main(argv: list[str] | None = None,*,formatter_class=None,prog: str | None = None,help_action=None,parents: list[argparse.ArgumentParser] | None = None) -> int:
     """
     Parse convert arguments, select a mode, and start the workflow.

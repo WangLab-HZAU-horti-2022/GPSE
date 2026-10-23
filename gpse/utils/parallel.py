@@ -8,6 +8,10 @@ import contextlib
 import os
 from concurrent.futures import ProcessPoolExecutor
 from typing import Any, Generator
+from pathlib import Path
+import math
+
+from gpse.utils.process_control import (initialize_pool_worker, owned_processes, terminate_owned, uninterrupted_cleanup)
 
 
 def _log(logger: Any | None, level: str, message: str) -> None:
@@ -20,23 +24,61 @@ def _log(logger: Any | None, level: str, message: str) -> None:
 
 
 def get_available_cpu_cores(logger: Any | None = None) -> int:
-    """Return CPU cores available to this process.
-
-    On Linux, ``sched_getaffinity`` respects CPU affinity and common scheduler
-    constraints. If unavailable, fall back to ``os.cpu_count``.
-    """
+    """Respect affinity and cgroup CPU quotas, including fractional quotas."""
+    available = os.cpu_count() or 1
     if hasattr(os, "sched_getaffinity"):
         try:
-            available = len(os.sched_getaffinity(0))
-            if available > 0:
-                _log(logger, "debug", f"Detected {available} available CPU core(s) via sched_getaffinity")
-                return available
-        except OSError as exc:
-            _log(logger, "warning", f"Failed to inspect CPU affinity: {exc}; falling back to os.cpu_count()")
-
-    available = os.cpu_count() or 1
-    _log(logger, "debug", f"Detected {available} CPU core(s) via os.cpu_count")
+            available = min(available, len(os.sched_getaffinity(0)))
+        except OSError:
+            pass
+    # Inspect the current cgroup and ancestors; an ancestor may impose the limit.
+    candidates = {Path("/sys/fs/cgroup")}
+    try:
+        for line in Path("/proc/self/cgroup").read_text().splitlines():
+            _, controllers, relative = line.split(":", 2)
+            root = Path("/sys/fs/cgroup")
+            bases = [root]
+            if controllers:
+                if "cpu" not in controllers.split(","):
+                    continue
+                bases = [root / name for name in ("cpu", "cpu,cpuacct", "cpuacct,cpu")]
+            for base in bases:
+                current = base / relative.lstrip("/")
+                while current.is_relative_to(base):
+                    candidates.add(current)
+                    if current == base:
+                        break
+                    current = current.parent
+    except (OSError, ValueError):
+        pass
+    for directory in candidates:
+        try:
+            quota, period = (directory / "cpu.max").read_text().split()
+            if quota != "max":
+                available = min(available, max(1, math.ceil(int(quota) / int(period))))
+        except (OSError, ValueError, ZeroDivisionError):
+            try:
+                quota = int((directory / "cpu.cfs_quota_us").read_text())
+                period = int((directory / "cpu.cfs_period_us").read_text())
+                if quota > 0 and period > 0:
+                    available = min(available, max(1, math.ceil(quota / period)))
+            except (OSError, ValueError):
+                pass
+    available = max(1, available)
+    _log(logger, "debug", f"Available CPU budget (affinity/cgroup): {available}")
     return available
+
+
+def resolve_cpu_budget(value):
+    if value in {None, "auto", "all", -1, "-1"}:
+        return get_available_cpu_cores()
+    try:
+        budget = int(value)
+    except (TypeError, ValueError):
+        raise ValueError("--threads must be auto, -1, or a positive integer") from None
+    if budget < 1 or budget > get_available_cpu_cores():
+        raise ValueError(f"--threads must be between 1 and {get_available_cpu_cores()}, or auto")
+    return budget
 
 
 def validate_parallelism(
@@ -188,6 +230,25 @@ def derive_parallelism_from_threads(
 
 
 @contextlib.contextmanager
+def native_thread_environment(count):
+    if count is None:
+        yield
+        return
+    names = ("GPSE_NATIVE_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
+             "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS", "BLIS_NUM_THREADS")
+    previous = {name: os.environ.get(name) for name in names}
+    os.environ.update({name: str(count) for name in names})
+    try:
+        yield
+    finally:
+        for name, value in previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
+@contextlib.contextmanager
 def graceful_process_pool(
     max_workers: int,
     *,
@@ -195,6 +256,7 @@ def graceful_process_pool(
     initargs=(),
     mp_context=None,
     logger=None,
+    native_threads=None,
 ) -> Generator[ProcessPoolExecutor, None, None]:
     """ProcessPoolExecutor context manager that shuts down promptly on Ctrl+C.
 
@@ -224,48 +286,48 @@ def graceful_process_pool(
         The underlying executor; submit work and iterate ``as_completed`` as
         usual inside the ``with`` block.
     """
-    executor = ProcessPoolExecutor(
-        max_workers=max_workers,
-        mp_context=mp_context,
-        initializer=initializer,
-        initargs=initargs,
-    )
-    try:
-        yield executor
-    except BaseException as exc:
-        if isinstance(exc, KeyboardInterrupt):
-            _log(logger, "warning", "Interrupt received (Ctrl+C); shutting down worker processes...")
-        # shutdown(wait=False) clears _processes. Save handles first so Ctrl+C
-        # actually stops running fits instead of hanging at interpreter exit.
-        workers = list((getattr(executor, "_processes", None) or {}).values())
-        executor.shutdown(wait=False, cancel_futures=True)
-        _terminate_executor_workers(executor, workers=workers)
-        raise
-    else:
-        # Normal completion also flushes worker event/log queues before returning.
-        executor.shutdown(wait=True, cancel_futures=True)
+    with native_thread_environment(native_threads):
+        existing = {(info[0], info[1]) for info in owned_processes([os.getpid()]).values()}
+        executor = ProcessPoolExecutor(
+            max_workers=max_workers,
+            mp_context=mp_context,
+            initializer=initialize_pool_worker,
+            initargs=(initializer, initargs),
+        )
+        try:
+            yield executor
+            # Keep normal shutdown inside the interrupt handler as well.
+            executor.shutdown(wait=True, cancel_futures=True)
+        except BaseException as exc:
+            with uninterrupted_cleanup():
+                if isinstance(exc, KeyboardInterrupt):
+                    _log(logger, "warning", "Interrupt received (Ctrl+C); shutting down worker processes...")
+                workers = list((getattr(executor, "_processes", None) or {}).values())
+                identities = owned_processes([w.pid for w in workers])
+                # Ctrl+C can arrive after Process.start but before Executor registers
+                # its handle. Include newly owned children so that window cannot leak.
+                for pid, info in owned_processes([os.getpid()]).items():
+                    if (pid, info[1]) not in existing:
+                        try:
+                            command = Path(f"/proc/{pid}/cmdline").read_bytes()
+                        except OSError:
+                            command = b""
+                        if b"multiprocessing.resource_tracker" not in command:
+                            identities[pid] = info
+
+                executor.shutdown(wait=False, cancel_futures=True)
+                _terminate_executor_workers(executor, workers=workers, identities=identities)
+            raise
 
 
-def _terminate_executor_workers(executor: ProcessPoolExecutor, workers=None) -> None:
-    """Best-effort termination of any worker processes still alive."""
-    try:
-        if workers is None:
-            workers = list((getattr(executor, "_processes", None) or {}).values())
-    except Exception:
-        return
-
+def _terminate_executor_workers(executor: ProcessPoolExecutor, workers=None, identities=None) -> None:
+    workers = workers if workers is not None else list((getattr(executor, "_processes", None) or {}).values())
+    identities = identities if identities is not None else owned_processes([w.pid for w in workers])
+    terminate_owned(identities)
     for worker in workers:
         try:
-            if worker.is_alive():
-                worker.terminate()
-        except Exception:
-            pass
-
-    for worker in workers:
-        try:
-            worker.join(timeout=0.5)
             if worker.is_alive():
                 worker.kill()
-                worker.join(timeout=0.5)
-        except Exception:
+            worker.join(timeout=1)
+        except (OSError, ValueError):
             pass

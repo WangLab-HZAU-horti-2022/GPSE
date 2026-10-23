@@ -564,6 +564,8 @@ def test_preprocess_training_defers_phenotype_standardization_to_holdout(tmp_pat
 
     assert result == 0
     assert captured["preprocess"]["standardize_phenotype"] is False
+    from gpse.utils.parallel import get_available_cpu_cores
+    assert captured["preprocess"]["threads"] == get_available_cpu_cores()
     assert captured["predictor"]["standardize_phenotype"] is True
 
 

@@ -1,5 +1,7 @@
 # CLI 日志调查与实施方案
 
+> 后续的 CPU 调度和退出机制更新见 [停止行为与 CPU 调度核查](process-and-cpu-audit.md)。以下 P0 调查与验收保留当时的历史记录。
+
 ## P0 调查（2026-10-22，修改前代码）
 
 - 调用链：`train/cli.py:main → predictor.py:GenomicPredictorV2 → _pipeline.py:run_all_models → _run_model_task / run_model_multiple_repeats → _run_repeat_task / train_and_evaluate_model_for_repeat → _optimization.py / _fold_training.py`。Stacking 在模型选择完成后由 `_pipeline.py` 调用 `stacking.py:fit`。
@@ -38,7 +40,7 @@ gpse train ... > train.txt 2>&1
 
 `-l DEBUG` 兼容旧命令。`--log-level WARNING/ERROR/CRITICAL` 继续限制普通日志的严重级别。非 TTY、`CI` 非空或 `TERM=dumb` 自动关闭动态显示及颜色；无需手动关闭进度。
 
-并行参数的显式值（包括 `1`、`--repeat_workers=1` 和 argparse 缩写）优先于 `--threads` 推导。展示的 configured capacity、training task ceiling、thread capacity ceiling 都是理论上限，不能解释为实测 CPU 使用率。冻结参数模式保持原有顺序 Repeat 逻辑；不为“用满线程”改变算法。
+并行参数的显式值（包括 `1`、`--repeat_workers=1` 和 argparse 缩写）优先于 `--threads` 推导。当前共享池的 CPU budget、worker limit 与 native threads 是容量上限，不能解释为实测 CPU 使用率。共享计算池执行 Optuna 和常规 CV 的独立 fold，父进程的线程负责 repeat/study 流程控制；同一 study 的 trial 保持顺序。冻结参数模式先固定一次搜索的参数，之后并行执行独立 Repeat。`scheduler/submitted` 的 `queue=compute` 代表实际计算任务，`queue=controller` 代表外层流程任务；计算并发应由 fold 事件重建，不能使用 repeat 的 PID 或整个 repeat 的时长代替。
 
 ### 日志产物
 

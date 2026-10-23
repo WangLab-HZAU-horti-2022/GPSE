@@ -78,16 +78,19 @@ Classification models (6): `rf_clf, xgboost_clf, lightgbm_clf, catboost_clf, svm
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--threads` | — | One-shot derivation of the three options below |
-| `--n_jobs` | 1 | Intra-model threads |
-| `--max_workers` | 1 | Model-level parallelism |
-| `--repeat_workers` | 1 | Repeat-level parallelism |
+| `--threads` | auto when no manual limits | Total CPU budget; `auto` or `-1` uses available CPUs, an integer caps usage |
+| `--n_jobs` | derived; manual default 1 | Native threads per independent fit |
+| `--max_workers` | derived; manual default 1 | Maximum active models in the shared pool |
+| `--repeat_workers` | derived; manual default 1 | Maximum simultaneous repeats per model |
+| `--fold_workers` | automatic within CPU budget | Maximum simultaneous folds per repeat or trial; `1` restores repeat-level scheduling |
 
 ### Terminal progress and logs
 
 The default `--verbosity NORMAL` shows a single Live model table on an interactive terminal, key warnings/errors and completion metrics. Use `--verbosity VERBOSE` for Repeat/Fold/Trial stages or `--verbosity DEBUG` (also `-l DEBUG`) for detailed diagnostics. `--progress off` disables dynamic rendering. Redirected output, CI and `TERM=dumb` automatically use plain text without ANSI control characters.
 
-`--threads` is a theoretical capacity budget. Explicit `--n_jobs`, `--max_workers` and `--repeat_workers` values, including `1`, take precedence over automatic derivation. With the default frozen-parameter mode, repeats remain sequential; configured worker capacity is not measured CPU concurrency.
+`--threads` is a theoretical capacity budget. Explicit `--n_jobs`, `--max_workers` and `--repeat_workers` values, including `1`, take precedence over automatic derivation. A single shared compute pool runs independent folds during both Optuna search and CV, then runs model refits. Trial suggestions remain sequential within each study. Frozen parameters from the first repeat are reused by later repeats. Even `--repeat_workers 1` allows multiple folds within that repeat to run concurrently; use `--fold_workers 1` to disable that behavior. Setting `--fold_workers` above 1 enables the bounded pool when other manual limits are supplied without `--threads`.
+
+Idle slots are reused across models and repeats; configured worker capacity is not measured CPU concurrency. Ctrl+C, SIGTERM and SIGHUP stop owned workers and their descendants, including during initial worker startup and the first search. See [fold scheduling and measurements](../fold-parallel-scheduling.md) and the [process and CPU audit](../process-and-cpu-audit.md).
 
 Every run retains DEBUG text under `logs/`, worker logs under `logs/workers/`, structured events in `logs/events.jsonl`, and full Trial histories under `logs/optuna/`. Events carry the same Run ID as `run_manifest.json` and identify Model/Repeat/Fold/Trial. CV Mean, the selected CV Std definition, Robust Objective and Holdout metrics are labeled separately. See [logging architecture and acceptance](../cli-logging-design.md).
 

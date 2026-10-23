@@ -5,6 +5,13 @@
 from gpse.utils.training_monitor import observed, observation
 import os
 import time
+import multiprocessing as mp
+from concurrent.futures import as_completed
+from pathlib import Path
+from threadpoolctl import threadpool_limits
+
+from gpse.utils.parallel import graceful_process_pool
+from gpse.utils.training_monitor import configure_worker, get_client_config, init_client
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import joblib
@@ -34,6 +41,37 @@ from gpse.train._feature_selection import (
 from gpse.train._model_pipeline import build_training_pipeline
 
 
+_STACK_DATA = None
+
+
+def _init_stack_worker(X, y, X_test, n_threads, task_type, log_dir, config):
+    global _STACK_DATA
+    init_client(config)
+    _STACK_DATA = (X, y, X_test, n_threads, task_type)
+    configure_worker(config, Path(log_dir) / f"stacking_{os.getpid()}.log")
+
+
+def _stack_job(pipeline, model_name, fold_idx, train_idx, val_idx):
+    X, y, X_test, threads, task_type = _STACK_DATA
+    stage = "stacking_refit" if fold_idx is None else "stacking_fold"
+    with observation(stage, model=model_name, fold=None if fold_idx is None else fold_idx + 1):
+        with threadpool_limits(limits=threads):
+            if train_idx is None:
+                pipeline.fit(X, y)
+                target = X_test
+            else:
+                pipeline.fit(X.iloc[train_idx], y.iloc[train_idx])
+                target = X.iloc[val_idx]
+            prediction = None
+            if target is not None:
+                if task_type == "classification" and hasattr(pipeline, "predict_proba"):
+                    probabilities = pipeline.predict_proba(target)
+                    prediction = probabilities[:, 1] if probabilities.shape[1] == 2 else probabilities.max(axis=1)
+                else:
+                    prediction = pipeline.predict(target)
+    return prediction, pipeline if train_idx is None else None
+
+
 class StackingEnsemble:
     """Train a low-capacity meta-model on strictly out-of-fold base predictions."""
 
@@ -51,6 +89,7 @@ class StackingEnsemble:
         task_type: str = "regression",
         feature_selection_config=None,
         genotype_imputation_config=None,
+        cpu_budget=None,
     ):
         self.base_models_dir = base_models_dir
         self._model_factory = model_factory
@@ -60,6 +99,7 @@ class StackingEnsemble:
         self.random_seed = random_seed
         self.output_dir = output_dir or os.path.join(base_models_dir, "ensemble_stacking")
         self.n_threads = n_threads
+        self.cpu_budget = cpu_budget
         self.use_default_params = use_default_params
         self.task_type = task_type
         self.feature_selection_config = feature_selection_config or FeatureSelectionConfig()
@@ -96,6 +136,9 @@ class StackingEnsemble:
         meta_train = np.zeros((len(X_train), len(self.selected_models)))
         meta_test = np.zeros((len(X_test), len(self.selected_models))) if X_test is not None else None
 
+        if self.cpu_budget is not None:
+            return self._parallel_meta_features(X_train, y_train, X_test, meta_train, meta_test)
+
         for column, model_name in enumerate(self.selected_models):
             logger.info(f"Generating strict OOF meta-feature for model {model_name}")
             for fold_idx, (train_idx, val_idx) in enumerate(self._splitter(X_train, y_train)):
@@ -107,7 +150,8 @@ class StackingEnsemble:
                         feature_selection_config=self.feature_selection_config,
                         genotype_imputation_config=self.genotype_imputation_config,
                     )
-                    fold_pipeline.fit(X_train.iloc[train_idx], y_train.iloc[train_idx])
+                    with threadpool_limits(limits=self.n_threads):
+                        fold_pipeline.fit(X_train.iloc[train_idx], y_train.iloc[train_idx])
                     meta_train[val_idx, column] = self._prediction_feature(
                         fold_pipeline, X_train.iloc[val_idx]
                     )
@@ -119,7 +163,8 @@ class StackingEnsemble:
                 feature_selection_config=self.feature_selection_config,
                 genotype_imputation_config=self.genotype_imputation_config,
             )
-            full_pipeline.fit(X_train, y_train)
+            with threadpool_limits(limits=self.n_threads):
+                full_pipeline.fit(X_train, y_train)
             self.base_models[model_name] = full_pipeline
             if X_test is not None:
                 meta_test[:, column] = self._prediction_feature(
@@ -127,6 +172,40 @@ class StackingEnsemble:
                     X_test,
                 )
 
+        return meta_train, meta_test
+
+    def _parallel_meta_features(self, X_train, y_train, X_test, meta_train, meta_test):
+        count = len(self.selected_models) * (self.cv_folds + 1)
+        cap = max(1, min(count, self.cpu_budget // self.n_threads))
+        with graceful_process_pool(max_workers=cap, mp_context=mp.get_context("spawn"),
+                                   initializer=_init_stack_worker,
+                                   initargs=(X_train, y_train, X_test, self.n_threads, self.task_type,
+                                             Path(self.output_dir).parents[1] / "logs" / "workers",
+                                             get_client_config()), logger=logger,
+                                   native_threads=self.n_threads) as pool:
+            futures = {}
+            for column, name in enumerate(self.selected_models):
+                splits = list(self._splitter(X_train, y_train))
+                for fold_idx, (train, val) in enumerate(splits):
+                    pipeline = build_training_pipeline(self._model_factory(name), task_type=self.task_type,
+                                                       model_name=name, feature_selection_config=self.feature_selection_config,
+                                                       genotype_imputation_config=self.genotype_imputation_config)
+                    future = pool.submit(_stack_job, pipeline, name, fold_idx, train, val)
+                    futures[future] = (column, name, val)
+                pipeline = build_training_pipeline(self._model_factory(name), task_type=self.task_type,
+                                                   model_name=name, feature_selection_config=self.feature_selection_config,
+                                                   genotype_imputation_config=self.genotype_imputation_config)
+                future = pool.submit(_stack_job, pipeline, name, None, None, None)
+                futures[future] = (column, name, None)
+            for future in as_completed(futures):
+                column, name, val = futures[future]
+                prediction, fitted = future.result()
+                if val is None:
+                    self.base_models[name] = fitted
+                    if meta_test is not None:
+                        meta_test[:, column] = prediction
+                else:
+                    meta_train[val, column] = prediction
         return meta_train, meta_test
 
     def fit_meta_model(self, meta_train: np.ndarray, y_train: pd.Series) -> None:
@@ -138,7 +217,9 @@ class StackingEnsemble:
         else:
             estimator = Ridge(alpha=1.0, random_state=self.random_seed)
             self.meta_model = Pipeline([("scaler", StandardScaler()), ("ridge", estimator)])
-        self.meta_model.fit(meta_train, y_train)
+        # The meta learner has only Top-N features; keep this tiny fit single-threaded.
+        with threadpool_limits(limits=1):
+            self.meta_model.fit(meta_train, y_train)
 
     def predict(self, X: pd.DataFrame) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         if self.meta_model is None:

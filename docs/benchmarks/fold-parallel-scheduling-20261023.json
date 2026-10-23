@@ -1,0 +1,3510 @@
+{
+  "created_at": "2026-10-23T04:34:03.995925+00:00",
+  "python": "/home/zj/.pyenv/versions/gpse/bin/python",
+  "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.39",
+  "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "threads": 4,
+  "repetitions": 2,
+  "versions": {
+    "numpy": "2.2.6",
+    "scipy": "1.15.3",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.7.2",
+    "optuna": "4.9.0",
+    "threadpoolctl": "3.6.0"
+  },
+  "sources": {
+    "before": {
+      "root": "/tmp/gpse-before-fold-scheduling-20261023",
+      "sha256": {
+        "gpse/__init__.py": "d16650fa94b8602e2222c9345a769e15a0174eba9bb05fe27abf0ce2afb75458",
+        "gpse/batch/__init__.py": "bf4b1a328d74deb85c3f718526253aabde0cd3b2e8361de31a6526e691795109",
+        "gpse/batch/adaptive_scheduler.py": "c5a6b525ce88d212d3e556f139b83d9f188f990c96e3148ad5cb66f81078258c",
+        "gpse/batch/cli.py": "1d7bcd82240131a5751c3ef3ac07b196b481d50c9092584da2b870772c0fbdec",
+        "gpse/batch/merge.py": "c31e7d71d6831f760af68e28cc398ff64fbbbc9edb9b2fbe7a6f514302e3ca4e",
+        "gpse/batch/runner.py": "917e7f21d555bcb44ef7ee00ce0c3714dc18389188a579b935847dd160e5cf0f",
+        "gpse/cli.py": "09703e8d39805a30661eeec9ace0ddfab1d9c893ea7fb29d177ef89f096309cc",
+        "gpse/config/__init__.py": "04f766276c18adbe0b3f4d60a49cf8e9e3e88720ebfb829ab19969fed6ac10ac",
+        "gpse/config/_model_registry.py": "ac97346324df7def4f9883cfe408e82903f02a25304d82205f6e68a0eb68d32f",
+        "gpse/config/_topsis_config.py": "3c4daf5c15279381987c597d563497686994b03d16882ecafa1c5a028b51e302",
+        "gpse/config/constants.py": "c377654ec19e2cf60e852f3b8e2141d512056c690b3aead40d82c1182201880e",
+        "gpse/convert/__init__.py": "717a25c72fcbc30def98e38ff8306200aaa6690365b2afdfb7ff0a58cbc091e2",
+        "gpse/convert/cli.py": "afd88eac8180fc4d2b1203ab009101b64ddcdf5ca71be2bbeab6176e87937d75",
+        "gpse/convert/external.py": "76145944468fe59c55ec0e88c7e5ae29424e4fb1c16108159c7ca691ddf19487",
+        "gpse/convert/genotype_matrix.py": "43b537d6a538abec94e346ef9f5181592980b921e96e4acd552a2b18ae03d011",
+        "gpse/convert/phenotype.py": "1fae1581d89f1f9b39b03da364dd69129e9b5d38ebd7fe707511799e89424946",
+        "gpse/convert/processor.py": "fda8011ea6df4a82155104e52b9661a06c91631c5648738fd0c7662863d75032",
+        "gpse/convert/qc.py": "da058062a2d4608ab226b941e09d5dc6095ab85a7a3eb91ec36d64e698aab6fb",
+        "gpse/convert/validators.py": "02baae09004de3de340a48e772cae4421eb6f67523f5eb1be5bc2475777e0d05",
+        "gpse/convert/workflow.py": "473ea1b7e78675eed5544d277023232a4fd05922d1d0b121f4daa6cfc0ee204d",
+        "gpse/mcp/__init__.py": "9d2cdb9f5e752fe38a89794e0e6fbfd5e4971c5901b3eb6c0688a0f6045c4974",
+        "gpse/mcp/server.py": "4d8e3c66714c6f4a9f565d7eba8249325da81a3f78b3e8ffa32cda5da13e20b2",
+        "gpse/models/__init__.py": "b09d6acb9c79acf7ff2445b7adf7363cac914fae22648c781276ff230f78c833",
+        "gpse/models/classification_model_optimizer.py": "05fe09acfa831c06fda630d82b62b35133093be1d302cf5521a3c9980f3ebeeb",
+        "gpse/models/classification_models.py": "eaa569821a2328c2322d2ae72dff38b89b7eaf5b5b487321eaf384c8b2164f6e",
+        "gpse/models/model_optimizers.py": "176550df840d8b542da37842a3e2edd38a9006e2f1695f057a6ffd64f3a94ad2",
+        "gpse/models/regression_model_optimizer.py": "a9c1f6af98a67483d627fea448ef5bddf2b33cd741a9d395c9d9ccb47056e7c8",
+        "gpse/models/safe_kernel_ridge.py": "064067f61adc27f309c8655ef5daba5040ff6be6b8b26a53f79ec398196f5d9d",
+        "gpse/output/__init__.py": "d39133262e67c05d1860b5c48fc987e63115a88cfeef4cb34f0abbe0f21ece2e",
+        "gpse/output/index.py": "a0ac936e32cc91af6947a3dbbfd572fa8b4e2b795c6e873fbd2b5efd4a910d71",
+        "gpse/output/manifest.py": "4cdfec3a6f3552e5928d1c6bb21674655d9c663995fb83e77500b9b1966cba1b",
+        "gpse/output/paths.py": "f0605e7f58b21c6df6dcd2bdf9c57c38a516ee32c1d7f2ec41e0a7dc46ad8324",
+        "gpse/output/readme.py": "0ffa2198b3067a57f8515ecb4cb0d0b407e81bdf5ce44e7f4d0a36cbdfccaf64",
+        "gpse/output/registry.py": "c8d7230f15917852ac435ea321df63a9eac4a40f97870aec0837cbdf8949ea5b",
+        "gpse/output/summary.py": "8dac3f5c3a04a980b33ef8d7034d42b7e99ff0d302493817715cd41f4ae35c14",
+        "gpse/pipeline/__init__.py": "3e651e0f3aaf747f1724ddd85a09af85248612e1258c5c1a6c18401b214f0b9f",
+        "gpse/pipeline/cli.py": "bddb5a786a63902db608e552f4c9ed98b7ece5863b679a19331b024264a3a4a8",
+        "gpse/predict/__init__.py": "c2715515976ec9901d20f0828f95ac21e9edfa22f01d8dd7b1c11785ba6392c3",
+        "gpse/predict/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+        "gpse/predict/cli.py": "4fa2a9053ad332c5caefdab766172e615166970a1db1b2c9c520398eed2207e2",
+        "gpse/predict/core.py": "908507de8962210d2909b8deec1ee6a3a02c9723d22d7602fca447f0cd77b2a7",
+        "gpse/tasks/__init__.py": "144af107892b843b14dcc69ad9b49923300476a1b3b5204f89ebc7e6056745d5",
+        "gpse/tasks/classification.py": "2f4a0c2b7f07cf4920d1dac6705128b10a60875dc87f7ff117b8faae90bd8e17",
+        "gpse/tools/__init__.py": "dd23842b7983d7a0cc88bb7c07f83977808678a81eeacecc73217ffcfbbfa5df",
+        "gpse/tools/analyze_phenotypes.py": "5919ed70974a33a21d9614cd9b421822e2eb7a27d987e684a3fbd7cecefb6fc6",
+        "gpse/tools/cli.py": "e398b960fc71f9053527e812db8814a6f1c9f8aee1cf852995d980799bcb83c5",
+        "gpse/tools/reaggregate_cv.py": "ba580ed3cd101fd422ca7f02f578d9bf0364375fb96e1e2f4f6e73210db6f907",
+        "gpse/tools/split.py": "cdab261c97c1fb697db0ed9bcdab4bf9ce5513d37cc3033ff04c61ae8da1d35c",
+        "gpse/train/__init__.py": "65103bc91a464797031a50043e064934d7fdde5cde481ed2a3d38abee9caaa93",
+        "gpse/train/_cv_manager.py": "6555061aade6941d593a814ecfbc9b1e16127e2c09c2fcd93fe17671495a6216",
+        "gpse/train/_cv_statistics.py": "5236d1531af716dcee7aa04f766ea355cb1c077bef44082b99cbea3467f9d4da",
+        "gpse/train/_data_io.py": "4b229ddd37f64afc4d4a9fae54837a74825f4e4db7343e6f0c12a32415030997",
+        "gpse/train/_ensemble.py": "f01d8343647853440097b836ae64d759bc3b5deab0503e191e0fb642098e6392",
+        "gpse/train/_feature_selection.py": "aef68dcd0c4daaab6859514049ac6cefa9b9f49626ece890c30f0ebf7f3ea384",
+        "gpse/train/_fold_training.py": "92662d9cb70dea9b91d612a9b6fefd8d6e6ad46621c1d7bffafad73a7ea3e433",
+        "gpse/train/_model_pipeline.py": "2ec036a82e9bb220e3db0b104b8c6af8f07983fcda02f2c1de04ce8ae7fc174e",
+        "gpse/train/_model_tools.py": "6ddfa1cc7421f40542d578f3c12d02258b6e9a80607a38be50e3115973a9520e",
+        "gpse/train/_optimization.py": "f1c9efde4cb317621d2daed9c8d6e654ae02ac80832c743e7df874c5df2128cb",
+        "gpse/train/_pipeline.py": "44dcb2208386068b954585037a5a2e79429183e2e48333d84e2a2bd8a5363130",
+        "gpse/train/_repeat_training.py": "dbd635a8d8b13ce18241c1b009f5f0ac0a04657e056e2dc11d6bb6300a656f9f",
+        "gpse/train/_results.py": "90b3d7f0d344ebe1aa2af79d3b38827e64ac8bea79cb0e3cf46bb7d70665a527",
+        "gpse/train/_scheduler.py": "da394c23af7859cf7d5ffd2beb8dfd08c4caa02b6ee98efff96f6fd6ea6ffa1e",
+        "gpse/train/cli.py": "1c31730172103dddb593baa1de4c1312990b55147e990e663464125438f0cc9f",
+        "gpse/train/predictor.py": "dca2f49bc37174583f86201df97cea085aeb94d6c90c1f61d7d7e30e5a90b078",
+        "gpse/train/stacking.py": "dbbf69c2aeccee1117ab53e1b94c67e7ac52e005d271a234015759a738f0e639",
+        "gpse/train/topsis.py": "d1c61c74cc102c03f7aadd58328762d0aad552cb9b768c7d50279076707e5d92",
+        "gpse/train/workflow.py": "77f46ad6f7f700f43eca96b1162e5d0dbeb2a43f6a6bd65f07ae57ef6af28eda",
+        "gpse/utils/__init__.py": "45ad9f011f67ef0d10ba98b89e84e794e57f3202e068191531e91c828b897508",
+        "gpse/utils/cli_display.py": "fea5fd7a696f3009463422a7267b64ac12338b1028844909d1c9e0e1f305edd2",
+        "gpse/utils/configuration.py": "353c51c08cdd20f3fda637db87d313051c0dd5c2ae4a4f0c274dda4298845009",
+        "gpse/utils/dependency_checker.py": "24d4276f03aca5571291611af559fc63d15e326fa364f796ee02696afe8185bd",
+        "gpse/utils/feature_manifest.py": "6eea22f8225104c96dd9a16db15f8ab7c64775192539a5252b18d39e478b4c72",
+        "gpse/utils/genomic_utils.py": "cf5cbafd84c223f74f076b44e112a10fdc9e14a8a56a6aaefc3a9f1d5bb7b270",
+        "gpse/utils/log_utils.py": "49522dfc3287bc67dff4eb0b500f7bb9d48e5ffd7ba362b3e65509ee418d620d",
+        "gpse/utils/logo.py": "53d7aab3283de1d151248a654e7d3b6a9041d7f46c03915d15e68f57ce0ecb15",
+        "gpse/utils/paralle.py": "8b1592b2e75a55ae75e565b8024f5e01431635f2b07475234e73f43c5cd13abf",
+        "gpse/utils/parallel.py": "46c75916fbd650801f04bebae1f5d6106a6420bb2b70b16397ddf11367fe8617",
+        "gpse/utils/print_utils.py": "f688e17aed637b9f1a99e291d365401bb37ad0e7891b0f9578366450fc990383",
+        "gpse/utils/process_control.py": "96214f122403932d03b76069d948846f0f376ee054256c2222c21afbd2e72279",
+        "gpse/utils/snp_ids.py": "33d85e233c3916982b303e0beb7777471ad6f595c8673106bc87adf53dcbc9a0",
+        "gpse/utils/training_monitor.py": "0cc00b234a8144f396e5ec937749fe61c60db044df17550ab187c71c9f339ab9",
+        "gpse/utils/version.py": "9688c9632e52e29dab0ce1b5d37f1e1295a83d3cb4d1913dc8de0af554663000"
+      }
+    },
+    "after": {
+      "root": "/home/zj/zj_code_libarary/gpse",
+      "sha256": {
+        "gpse/__init__.py": "d16650fa94b8602e2222c9345a769e15a0174eba9bb05fe27abf0ce2afb75458",
+        "gpse/batch/__init__.py": "bf4b1a328d74deb85c3f718526253aabde0cd3b2e8361de31a6526e691795109",
+        "gpse/batch/adaptive_scheduler.py": "c5a6b525ce88d212d3e556f139b83d9f188f990c96e3148ad5cb66f81078258c",
+        "gpse/batch/cli.py": "1d7bcd82240131a5751c3ef3ac07b196b481d50c9092584da2b870772c0fbdec",
+        "gpse/batch/merge.py": "c31e7d71d6831f760af68e28cc398ff64fbbbc9edb9b2fbe7a6f514302e3ca4e",
+        "gpse/batch/runner.py": "917e7f21d555bcb44ef7ee00ce0c3714dc18389188a579b935847dd160e5cf0f",
+        "gpse/cli.py": "09703e8d39805a30661eeec9ace0ddfab1d9c893ea7fb29d177ef89f096309cc",
+        "gpse/config/__init__.py": "04f766276c18adbe0b3f4d60a49cf8e9e3e88720ebfb829ab19969fed6ac10ac",
+        "gpse/config/_model_registry.py": "ac97346324df7def4f9883cfe408e82903f02a25304d82205f6e68a0eb68d32f",
+        "gpse/config/_topsis_config.py": "3c4daf5c15279381987c597d563497686994b03d16882ecafa1c5a028b51e302",
+        "gpse/config/constants.py": "c377654ec19e2cf60e852f3b8e2141d512056c690b3aead40d82c1182201880e",
+        "gpse/convert/__init__.py": "717a25c72fcbc30def98e38ff8306200aaa6690365b2afdfb7ff0a58cbc091e2",
+        "gpse/convert/cli.py": "afd88eac8180fc4d2b1203ab009101b64ddcdf5ca71be2bbeab6176e87937d75",
+        "gpse/convert/external.py": "76145944468fe59c55ec0e88c7e5ae29424e4fb1c16108159c7ca691ddf19487",
+        "gpse/convert/genotype_matrix.py": "43b537d6a538abec94e346ef9f5181592980b921e96e4acd552a2b18ae03d011",
+        "gpse/convert/phenotype.py": "1fae1581d89f1f9b39b03da364dd69129e9b5d38ebd7fe707511799e89424946",
+        "gpse/convert/processor.py": "fda8011ea6df4a82155104e52b9661a06c91631c5648738fd0c7662863d75032",
+        "gpse/convert/qc.py": "da058062a2d4608ab226b941e09d5dc6095ab85a7a3eb91ec36d64e698aab6fb",
+        "gpse/convert/validators.py": "02baae09004de3de340a48e772cae4421eb6f67523f5eb1be5bc2475777e0d05",
+        "gpse/convert/workflow.py": "473ea1b7e78675eed5544d277023232a4fd05922d1d0b121f4daa6cfc0ee204d",
+        "gpse/mcp/__init__.py": "9d2cdb9f5e752fe38a89794e0e6fbfd5e4971c5901b3eb6c0688a0f6045c4974",
+        "gpse/mcp/server.py": "4d8e3c66714c6f4a9f565d7eba8249325da81a3f78b3e8ffa32cda5da13e20b2",
+        "gpse/models/__init__.py": "b09d6acb9c79acf7ff2445b7adf7363cac914fae22648c781276ff230f78c833",
+        "gpse/models/classification_model_optimizer.py": "05fe09acfa831c06fda630d82b62b35133093be1d302cf5521a3c9980f3ebeeb",
+        "gpse/models/classification_models.py": "eaa569821a2328c2322d2ae72dff38b89b7eaf5b5b487321eaf384c8b2164f6e",
+        "gpse/models/model_optimizers.py": "176550df840d8b542da37842a3e2edd38a9006e2f1695f057a6ffd64f3a94ad2",
+        "gpse/models/regression_model_optimizer.py": "a9c1f6af98a67483d627fea448ef5bddf2b33cd741a9d395c9d9ccb47056e7c8",
+        "gpse/models/safe_kernel_ridge.py": "064067f61adc27f309c8655ef5daba5040ff6be6b8b26a53f79ec398196f5d9d",
+        "gpse/output/__init__.py": "d39133262e67c05d1860b5c48fc987e63115a88cfeef4cb34f0abbe0f21ece2e",
+        "gpse/output/index.py": "a0ac936e32cc91af6947a3dbbfd572fa8b4e2b795c6e873fbd2b5efd4a910d71",
+        "gpse/output/manifest.py": "4cdfec3a6f3552e5928d1c6bb21674655d9c663995fb83e77500b9b1966cba1b",
+        "gpse/output/paths.py": "f0605e7f58b21c6df6dcd2bdf9c57c38a516ee32c1d7f2ec41e0a7dc46ad8324",
+        "gpse/output/readme.py": "0ffa2198b3067a57f8515ecb4cb0d0b407e81bdf5ce44e7f4d0a36cbdfccaf64",
+        "gpse/output/registry.py": "c8d7230f15917852ac435ea321df63a9eac4a40f97870aec0837cbdf8949ea5b",
+        "gpse/output/summary.py": "8dac3f5c3a04a980b33ef8d7034d42b7e99ff0d302493817715cd41f4ae35c14",
+        "gpse/pipeline/__init__.py": "3e651e0f3aaf747f1724ddd85a09af85248612e1258c5c1a6c18401b214f0b9f",
+        "gpse/pipeline/cli.py": "bddb5a786a63902db608e552f4c9ed98b7ece5863b679a19331b024264a3a4a8",
+        "gpse/predict/__init__.py": "c2715515976ec9901d20f0828f95ac21e9edfa22f01d8dd7b1c11785ba6392c3",
+        "gpse/predict/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+        "gpse/predict/cli.py": "4fa2a9053ad332c5caefdab766172e615166970a1db1b2c9c520398eed2207e2",
+        "gpse/predict/core.py": "908507de8962210d2909b8deec1ee6a3a02c9723d22d7602fca447f0cd77b2a7",
+        "gpse/tasks/__init__.py": "144af107892b843b14dcc69ad9b49923300476a1b3b5204f89ebc7e6056745d5",
+        "gpse/tasks/classification.py": "2f4a0c2b7f07cf4920d1dac6705128b10a60875dc87f7ff117b8faae90bd8e17",
+        "gpse/tools/__init__.py": "dd23842b7983d7a0cc88bb7c07f83977808678a81eeacecc73217ffcfbbfa5df",
+        "gpse/tools/analyze_phenotypes.py": "5919ed70974a33a21d9614cd9b421822e2eb7a27d987e684a3fbd7cecefb6fc6",
+        "gpse/tools/cli.py": "e398b960fc71f9053527e812db8814a6f1c9f8aee1cf852995d980799bcb83c5",
+        "gpse/tools/reaggregate_cv.py": "ba580ed3cd101fd422ca7f02f578d9bf0364375fb96e1e2f4f6e73210db6f907",
+        "gpse/tools/split.py": "cdab261c97c1fb697db0ed9bcdab4bf9ce5513d37cc3033ff04c61ae8da1d35c",
+        "gpse/train/__init__.py": "65103bc91a464797031a50043e064934d7fdde5cde481ed2a3d38abee9caaa93",
+        "gpse/train/_cv_manager.py": "6555061aade6941d593a814ecfbc9b1e16127e2c09c2fcd93fe17671495a6216",
+        "gpse/train/_cv_statistics.py": "5236d1531af716dcee7aa04f766ea355cb1c077bef44082b99cbea3467f9d4da",
+        "gpse/train/_data_io.py": "4b229ddd37f64afc4d4a9fae54837a74825f4e4db7343e6f0c12a32415030997",
+        "gpse/train/_ensemble.py": "f01d8343647853440097b836ae64d759bc3b5deab0503e191e0fb642098e6392",
+        "gpse/train/_feature_selection.py": "aef68dcd0c4daaab6859514049ac6cefa9b9f49626ece890c30f0ebf7f3ea384",
+        "gpse/train/_fold_scheduler.py": "8588db5acb4ba88a3eb10b8414f76bc367d0563c293f65190bc2fb816b436219",
+        "gpse/train/_fold_training.py": "92662d9cb70dea9b91d612a9b6fefd8d6e6ad46621c1d7bffafad73a7ea3e433",
+        "gpse/train/_model_pipeline.py": "2ec036a82e9bb220e3db0b104b8c6af8f07983fcda02f2c1de04ce8ae7fc174e",
+        "gpse/train/_model_tools.py": "6ddfa1cc7421f40542d578f3c12d02258b6e9a80607a38be50e3115973a9520e",
+        "gpse/train/_optimization.py": "82dcc695ee0ec7b72af430948c58eee71f19df5657ce11ab3d5b479853eefca1",
+        "gpse/train/_pipeline.py": "44dcb2208386068b954585037a5a2e79429183e2e48333d84e2a2bd8a5363130",
+        "gpse/train/_repeat_training.py": "de78486c7c482aae92fd29585bdcc841342053ed42a6529eef81e280e86a5a1d",
+        "gpse/train/_results.py": "90b3d7f0d344ebe1aa2af79d3b38827e64ac8bea79cb0e3cf46bb7d70665a527",
+        "gpse/train/_scheduler.py": "db78d42ffeaf56b8798fedc09a94a927691cd8d797f9a2562c3bca879c1e244d",
+        "gpse/train/cli.py": "dafbbbc0e1d5c75544d02d1968a58e991df4faa53f5939c20b4b8ede2194d117",
+        "gpse/train/predictor.py": "ce501e668e4840cf3f38bbbe397d2a3cc9e0649c21a6ca63bac99afc0384519e",
+        "gpse/train/stacking.py": "dbbf69c2aeccee1117ab53e1b94c67e7ac52e005d271a234015759a738f0e639",
+        "gpse/train/topsis.py": "d1c61c74cc102c03f7aadd58328762d0aad552cb9b768c7d50279076707e5d92",
+        "gpse/train/workflow.py": "f92e7339d5dce735951d798533b11608c170bfd44aac9baa844d8b2094fdc504",
+        "gpse/utils/__init__.py": "45ad9f011f67ef0d10ba98b89e84e794e57f3202e068191531e91c828b897508",
+        "gpse/utils/cli_display.py": "fea5fd7a696f3009463422a7267b64ac12338b1028844909d1c9e0e1f305edd2",
+        "gpse/utils/configuration.py": "353c51c08cdd20f3fda637db87d313051c0dd5c2ae4a4f0c274dda4298845009",
+        "gpse/utils/dependency_checker.py": "24d4276f03aca5571291611af559fc63d15e326fa364f796ee02696afe8185bd",
+        "gpse/utils/feature_manifest.py": "6eea22f8225104c96dd9a16db15f8ab7c64775192539a5252b18d39e478b4c72",
+        "gpse/utils/genomic_utils.py": "cf5cbafd84c223f74f076b44e112a10fdc9e14a8a56a6aaefc3a9f1d5bb7b270",
+        "gpse/utils/log_utils.py": "49522dfc3287bc67dff4eb0b500f7bb9d48e5ffd7ba362b3e65509ee418d620d",
+        "gpse/utils/logo.py": "53d7aab3283de1d151248a654e7d3b6a9041d7f46c03915d15e68f57ce0ecb15",
+        "gpse/utils/paralle.py": "8b1592b2e75a55ae75e565b8024f5e01431635f2b07475234e73f43c5cd13abf",
+        "gpse/utils/parallel.py": "46c75916fbd650801f04bebae1f5d6106a6420bb2b70b16397ddf11367fe8617",
+        "gpse/utils/print_utils.py": "f688e17aed637b9f1a99e291d365401bb37ad0e7891b0f9578366450fc990383",
+        "gpse/utils/process_control.py": "96214f122403932d03b76069d948846f0f376ee054256c2222c21afbd2e72279",
+        "gpse/utils/snp_ids.py": "33d85e233c3916982b303e0beb7777471ad6f595c8673106bc87adf53dcbc9a0",
+        "gpse/utils/training_monitor.py": "0cc00b234a8144f396e5ec937749fe61c60db044df17550ab187c71c9f339ab9",
+        "gpse/utils/version.py": "9688c9632e52e29dab0ce1b5d37f1e1295a83d3cb4d1913dc8de0af554663000"
+      }
+    }
+  },
+  "cases": {
+    "frozen_search": {
+      "samples": 700,
+      "features": 128,
+      "models": [
+        "rf_reg"
+      ],
+      "repeats": 6,
+      "folds": 3,
+      "trials": 6
+    },
+    "one_repeat_at_a_time": {
+      "samples": 1000,
+      "features": 192,
+      "models": [
+        "rf_reg"
+      ],
+      "repeats": 2,
+      "folds": 4,
+      "trials": 6,
+      "flags": [
+        "--repeat_workers",
+        "1"
+      ]
+    },
+    "default_parameters": {
+      "samples": 1000,
+      "features": 192,
+      "models": [
+        "rf_reg"
+      ],
+      "repeats": 2,
+      "folds": 4,
+      "trials": 6,
+      "flags": [
+        "--repeat_workers",
+        "1",
+        "--use_default_params"
+      ]
+    },
+    "tiny": {
+      "samples": 80,
+      "features": 24,
+      "models": [
+        "lasso_reg",
+        "kernelridge_reg"
+      ],
+      "repeats": 4,
+      "folds": 2,
+      "trials": 2,
+      "flags": [
+        "--use_default_params"
+      ]
+    }
+  },
+  "runs": [
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/tmp/gpse-before-fold-scheduling-20261023",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/frozen_search/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/frozen_search/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "rf_reg",
+        "--n_repeats",
+        "6",
+        "--train_folds",
+        "3",
+        "--cv_folds",
+        "3",
+        "--trials",
+        "6",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/frozen_search/before_1/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 6.351435053000387,
+      "cpu_s": 8.544161,
+      "average_cores": 1.345233152618601,
+      "peak_rss_sum_mib": 786.9375,
+      "peak_processes": 5,
+      "peak_resident_threads": 14,
+      "started_epoch": 1792730044.221868,
+      "case": "frozen_search",
+      "mode": "before",
+      "repetition": 1,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "671b7bff46ee4039b8e4b1e63b0b3fc6",
+          "timestamp": "2026-10-23T04:34:05.008672+00:00",
+          "run_id": "results",
+          "run_execution_id": "7bd1a2b578ce4bdd95de18689938685d",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 5,
+          "cpu_budget": 4,
+          "worker_limit": 4,
+          "threads_per_worker": 1,
+          "scheduling": "shared_repeat_refit_pool"
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 1.4648280143737793,
+        "repeats": {
+          "jobs": 6,
+          "peak_active": 3,
+          "span_s": 3.7868030071258545,
+          "mean_active": 1.1055035373348479
+        },
+        "stacking": {
+          "jobs": 0,
+          "peak_active": 0,
+          "span_s": 0,
+          "mean_active": 0
+        },
+        "trial_count": 6,
+        "stage_total_s": {
+          "data": 0.011224031448364258,
+          "optimization_fold": 1.5646686553955078,
+          "repeat": 4.186324119567871,
+          "fold": 2.5364699363708496,
+          "model": 5.063711881637573,
+          "holdout": 0.0022721290588378906,
+          "trial": 1.5715551376342773,
+          "selection": 0.01425790786743164,
+          "predictions": 0.002771139144897461,
+          "reports": 0.0177309513092041,
+          "optimization": 1.5789504051208496,
+          "run": 5.330826997756958
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/home/zj/zj_code_libarary/gpse",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/frozen_search/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/frozen_search/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "rf_reg",
+        "--n_repeats",
+        "6",
+        "--train_folds",
+        "3",
+        "--cv_folds",
+        "3",
+        "--trials",
+        "6",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/frozen_search/after_1/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 5.951292007999655,
+      "cpu_s": 9.835542999999998,
+      "average_cores": 1.6526735684922165,
+      "peak_rss_sum_mib": 979.78515625,
+      "peak_processes": 6,
+      "peak_resident_threads": 20,
+      "started_epoch": 1792730050.5780232,
+      "case": "frozen_search",
+      "mode": "after",
+      "repetition": 1,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "6b610d1bae97401c99cd3242947287a2",
+          "timestamp": "2026-10-23T04:34:11.366462+00:00",
+          "run_id": "results",
+          "run_execution_id": "4586dfc356204c50b5adef80eb837d44",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 23,
+          "cpu_budget": 4,
+          "worker_limit": 4,
+          "threads_per_worker": 1,
+          "scheduling": "shared_fold_repeat_refit_pool",
+          "controller_limit": 4,
+          "fold_workers": 3
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 3.3899247646331787,
+        "repeats": {
+          "jobs": 6,
+          "peak_active": 4,
+          "span_s": 1.389678955078125,
+          "mean_active": 1.9168541858818104
+        },
+        "stacking": {
+          "jobs": 0,
+          "peak_active": 0,
+          "span_s": 0,
+          "mean_active": 0
+        },
+        "trial_count": 6,
+        "stage_total_s": {
+          "data": 0.011716127395629883,
+          "optimization_fold": 1.6648645401000977,
+          "repeat": 2.6638119220733643,
+          "fold": 2.5432870388031006,
+          "model": 2.0503439903259277,
+          "holdout": 0.001984119415283203,
+          "trial": 0.6108138561248779,
+          "selection": 0.012849092483520508,
+          "predictions": 0.0026390552520751953,
+          "reports": 0.020040035247802734,
+          "optimization": 0.6214113235473633,
+          "run": 4.93375301361084
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/home/zj/zj_code_libarary/gpse",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/frozen_search/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/frozen_search/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "rf_reg",
+        "--n_repeats",
+        "6",
+        "--train_folds",
+        "3",
+        "--cv_folds",
+        "3",
+        "--trials",
+        "6",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/frozen_search/after_2/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 5.954486206999718,
+      "cpu_s": 9.866414000000002,
+      "average_cores": 1.6569715097167694,
+      "peak_rss_sum_mib": 980.5078125,
+      "peak_processes": 6,
+      "peak_resident_threads": 20,
+      "started_epoch": 1792730056.5518756,
+      "case": "frozen_search",
+      "mode": "after",
+      "repetition": 2,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "ed249c8624784bed9216a802cdd57a0a",
+          "timestamp": "2026-10-23T04:34:17.335723+00:00",
+          "run_id": "results",
+          "run_execution_id": "1950cdf127394cb7a88d47a9e8331436",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 48,
+          "cpu_budget": 4,
+          "worker_limit": 4,
+          "threads_per_worker": 1,
+          "scheduling": "shared_fold_repeat_refit_pool",
+          "controller_limit": 4,
+          "fold_workers": 3
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 3.4132654666900635,
+        "repeats": {
+          "jobs": 6,
+          "peak_active": 4,
+          "span_s": 1.401608943939209,
+          "mean_active": 2.0992291930256206
+        },
+        "stacking": {
+          "jobs": 0,
+          "peak_active": 0,
+          "span_s": 0,
+          "mean_active": 0
+        },
+        "trial_count": 6,
+        "stage_total_s": {
+          "data": 0.010843038558959961,
+          "optimization_fold": 1.6594629287719727,
+          "repeat": 2.942298412322998,
+          "fold": 2.5454304218292236,
+          "model": 2.0522658824920654,
+          "holdout": 0.002421140670776367,
+          "trial": 0.6143901348114014,
+          "selection": 0.014178991317749023,
+          "predictions": 0.003393888473510742,
+          "reports": 0.018123149871826172,
+          "optimization": 0.6231818199157715,
+          "run": 4.962353229522705
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/tmp/gpse-before-fold-scheduling-20261023",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/frozen_search/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/frozen_search/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "rf_reg",
+        "--n_repeats",
+        "6",
+        "--train_folds",
+        "3",
+        "--cv_folds",
+        "3",
+        "--trials",
+        "6",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/frozen_search/before_2/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 7.058724877999339,
+      "cpu_s": 9.540816000000003,
+      "average_cores": 1.3516344899256316,
+      "peak_rss_sum_mib": 974.75,
+      "peak_processes": 6,
+      "peak_resident_threads": 16,
+      "started_epoch": 1792730062.5109265,
+      "case": "frozen_search",
+      "mode": "before",
+      "repetition": 2,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "15cad3ebd0864299b9511f5e714d8bb8",
+          "timestamp": "2026-10-23T04:34:23.294306+00:00",
+          "run_id": "results",
+          "run_execution_id": "ac4404d003fe4794942303a159dd9112",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 73,
+          "cpu_budget": 4,
+          "worker_limit": 4,
+          "threads_per_worker": 1,
+          "scheduling": "shared_repeat_refit_pool"
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 1.4746954441070557,
+        "repeats": {
+          "jobs": 6,
+          "peak_active": 2,
+          "span_s": 4.444249153137207,
+          "mean_active": 0.950529684453212
+        },
+        "stacking": {
+          "jobs": 0,
+          "peak_active": 0,
+          "span_s": 0,
+          "mean_active": 0
+        },
+        "trial_count": 6,
+        "stage_total_s": {
+          "data": 0.011418819427490234,
+          "optimization_fold": 1.607961893081665,
+          "repeat": 4.224390745162964,
+          "fold": 2.5312986373901367,
+          "model": 5.751736879348755,
+          "holdout": 0.002418994903564453,
+          "trial": 1.6156630516052246,
+          "selection": 0.012998104095458984,
+          "predictions": 0.003468036651611328,
+          "reports": 0.01799297332763672,
+          "optimization": 1.6229078769683838,
+          "run": 6.028334140777588
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/tmp/gpse-before-fold-scheduling-20261023",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/one_repeat_at_a_time/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/one_repeat_at_a_time/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "rf_reg",
+        "--n_repeats",
+        "2",
+        "--train_folds",
+        "4",
+        "--cv_folds",
+        "4",
+        "--trials",
+        "6",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/one_repeat_at_a_time/before_1/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1",
+        "--repeat_workers",
+        "1"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 9.676419289999103,
+      "cpu_s": 9.735683999999992,
+      "average_cores": 1.0061246529552663,
+      "peak_rss_sum_mib": 408.93359375,
+      "peak_processes": 3,
+      "peak_resident_threads": 10,
+      "started_epoch": 1792730069.641783,
+      "case": "one_repeat_at_a_time",
+      "mode": "before",
+      "repetition": 1,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "8e61e5e2bd274b4ebe43af7cfabb6ba6",
+          "timestamp": "2026-10-23T04:34:30.439833+00:00",
+          "run_id": "results",
+          "run_execution_id": "7f7b8289b2ce42b8bbf9923d9bcb1474",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 94,
+          "cpu_budget": 4,
+          "worker_limit": 1,
+          "threads_per_worker": 1,
+          "scheduling": "shared_repeat_refit_pool"
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 1.4726009368896484,
+        "repeats": {
+          "jobs": 2,
+          "peak_active": 1,
+          "span_s": 6.413967132568359,
+          "mean_active": 0.9989876637268249
+        },
+        "stacking": {
+          "jobs": 0,
+          "peak_active": 0,
+          "span_s": 0,
+          "mean_active": 0
+        },
+        "trial_count": 6,
+        "stage_total_s": {
+          "data": 0.017054080963134766,
+          "optimization_fold": 4.193365573883057,
+          "repeat": 6.407474040985107,
+          "fold": 2.1669318675994873,
+          "model": 8.513298034667969,
+          "holdout": 0.002254009246826172,
+          "trial": 4.201702833175659,
+          "selection": 0.012755155563354492,
+          "predictions": 0.0035631656646728516,
+          "reports": 0.016804218292236328,
+          "optimization": 4.208488941192627,
+          "run": 8.71960997581482
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/home/zj/zj_code_libarary/gpse",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/one_repeat_at_a_time/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/one_repeat_at_a_time/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "rf_reg",
+        "--n_repeats",
+        "2",
+        "--train_folds",
+        "4",
+        "--cv_folds",
+        "4",
+        "--trials",
+        "6",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/one_repeat_at_a_time/after_1/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1",
+        "--repeat_workers",
+        "1"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 7.260276704000717,
+      "cpu_s": 13.298686000000004,
+      "average_cores": 1.8317051184387876,
+      "peak_rss_sum_mib": 994.09375,
+      "peak_processes": 6,
+      "peak_resident_threads": 17,
+      "started_epoch": 1792730079.3225913,
+      "case": "one_repeat_at_a_time",
+      "mode": "after",
+      "repetition": 1,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "e86b74580f464259b6437922e0f2953f",
+          "timestamp": "2026-10-23T04:34:40.130866+00:00",
+          "run_id": "results",
+          "run_execution_id": "452160686eb44253b78b21c257de56ff",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 106,
+          "cpu_budget": 4,
+          "worker_limit": 4,
+          "threads_per_worker": 1,
+          "scheduling": "shared_fold_repeat_refit_pool",
+          "controller_limit": 1,
+          "fold_workers": 4
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 3.402228593826294,
+        "repeats": {
+          "jobs": 2,
+          "peak_active": 1,
+          "span_s": 1.855051040649414,
+          "mean_active": 0.9998182670646455
+        },
+        "stacking": {
+          "jobs": 0,
+          "peak_active": 0,
+          "span_s": 0,
+          "mean_active": 0
+        },
+        "trial_count": 6,
+        "stage_total_s": {
+          "data": 0.01843404769897461,
+          "optimization_fold": 4.534522294998169,
+          "repeat": 1.8547139167785645,
+          "fold": 2.2790563106536865,
+          "model": 3.3703701496124268,
+          "holdout": 0.0024018287658691406,
+          "trial": 1.2177724838256836,
+          "selection": 0.012599945068359375,
+          "predictions": 0.0049591064453125,
+          "reports": 0.01863408088684082,
+          "optimization": 1.2262449264526367,
+          "run": 6.258763074874878
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/home/zj/zj_code_libarary/gpse",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/one_repeat_at_a_time/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/one_repeat_at_a_time/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "rf_reg",
+        "--n_repeats",
+        "2",
+        "--train_folds",
+        "4",
+        "--cv_folds",
+        "4",
+        "--trials",
+        "6",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/one_repeat_at_a_time/after_2/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1",
+        "--repeat_workers",
+        "1"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 7.664140894999946,
+      "cpu_s": 13.727812,
+      "average_cores": 1.7911742735517777,
+      "peak_rss_sum_mib": 993.7421875,
+      "peak_processes": 6,
+      "peak_resident_threads": 17,
+      "started_epoch": 1792730086.6008677,
+      "case": "one_repeat_at_a_time",
+      "mode": "after",
+      "repetition": 2,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "04807d863eb443ce94a49d0135934a4c",
+          "timestamp": "2026-10-23T04:34:47.456348+00:00",
+          "run_id": "results",
+          "run_execution_id": "eac9007beb814f11ba118d15db008fb2",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 128,
+          "cpu_budget": 4,
+          "worker_limit": 4,
+          "threads_per_worker": 1,
+          "scheduling": "shared_fold_repeat_refit_pool",
+          "controller_limit": 1,
+          "fold_workers": 4
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 3.67423415184021,
+        "repeats": {
+          "jobs": 2,
+          "peak_active": 1,
+          "span_s": 1.8918051719665527,
+          "mean_active": 0.9998545648122966
+        },
+        "stacking": {
+          "jobs": 0,
+          "peak_active": 0,
+          "span_s": 0,
+          "mean_active": 0
+        },
+        "trial_count": 6,
+        "stage_total_s": {
+          "data": 0.0206758975982666,
+          "optimization_fold": 4.576581954956055,
+          "repeat": 1.8915300369262695,
+          "fold": 2.3356261253356934,
+          "model": 3.4304609298706055,
+          "holdout": 0.0021250247955322266,
+          "trial": 1.232177972793579,
+          "selection": 0.014219045639038086,
+          "predictions": 0.004373073577880859,
+          "reports": 0.02068305015563965,
+          "optimization": 1.240211009979248,
+          "run": 6.555474042892456
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/tmp/gpse-before-fold-scheduling-20261023",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/one_repeat_at_a_time/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/one_repeat_at_a_time/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "rf_reg",
+        "--n_repeats",
+        "2",
+        "--train_folds",
+        "4",
+        "--cv_folds",
+        "4",
+        "--trials",
+        "6",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/one_repeat_at_a_time/before_2/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1",
+        "--repeat_workers",
+        "1"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 10.080372537000585,
+      "cpu_s": 10.093846999999997,
+      "average_cores": 1.0013367028797748,
+      "peak_rss_sum_mib": 408.23828125,
+      "peak_processes": 3,
+      "peak_resident_threads": 10,
+      "started_epoch": 1792730094.2694898,
+      "case": "one_repeat_at_a_time",
+      "mode": "before",
+      "repetition": 2,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "c598e5d6322b4a45ab530368d51399b9",
+          "timestamp": "2026-10-23T04:34:55.112929+00:00",
+          "run_id": "results",
+          "run_execution_id": "4148fa29a4a14ee19fb3d8f31961c055",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 150,
+          "cpu_budget": 4,
+          "worker_limit": 1,
+          "threads_per_worker": 1,
+          "scheduling": "shared_repeat_refit_pool"
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 1.5918011665344238,
+        "repeats": {
+          "jobs": 2,
+          "peak_active": 1,
+          "span_s": 6.625313997268677,
+          "mean_active": 0.9989446384469938
+        },
+        "stacking": {
+          "jobs": 0,
+          "peak_active": 0,
+          "span_s": 0,
+          "mean_active": 0
+        },
+        "trial_count": 6,
+        "stage_total_s": {
+          "data": 0.01734304428100586,
+          "optimization_fold": 4.378634691238403,
+          "repeat": 6.618321895599365,
+          "fold": 2.191472053527832,
+          "model": 8.797247886657715,
+          "holdout": 0.0018739700317382812,
+          "trial": 4.387414455413818,
+          "selection": 0.01230001449584961,
+          "predictions": 0.0039789676666259766,
+          "reports": 0.01847219467163086,
+          "optimization": 4.394207000732422,
+          "run": 9.01714015007019
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/tmp/gpse-before-fold-scheduling-20261023",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/default_parameters/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/default_parameters/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "rf_reg",
+        "--n_repeats",
+        "2",
+        "--train_folds",
+        "4",
+        "--cv_folds",
+        "4",
+        "--trials",
+        "6",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/default_parameters/before_1/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1",
+        "--repeat_workers",
+        "1",
+        "--use_default_params"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 5.843621287000133,
+      "cpu_s": 5.793142000000003,
+      "average_cores": 0.9913616429742929,
+      "peak_rss_sum_mib": 409.36328125,
+      "peak_processes": 3,
+      "peak_resident_threads": 10,
+      "started_epoch": 1792730104.4171398,
+      "case": "default_parameters",
+      "mode": "before",
+      "repetition": 1,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "81380de712a84caa9746bc4acd905f42",
+          "timestamp": "2026-10-23T04:35:05.207008+00:00",
+          "run_id": "results",
+          "run_execution_id": "f535022cafdb416f82dfe0f86a720370",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 162,
+          "cpu_budget": 4,
+          "worker_limit": 1,
+          "threads_per_worker": 1,
+          "scheduling": "shared_repeat_refit_pool"
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 1.4610083103179932,
+        "repeats": {
+          "jobs": 2,
+          "peak_active": 1,
+          "span_s": 2.3611679077148438,
+          "mean_active": 0.9973284073761726
+        },
+        "stacking": {
+          "jobs": 0,
+          "peak_active": 0,
+          "span_s": 0,
+          "mean_active": 0
+        },
+        "trial_count": 0,
+        "stage_total_s": {
+          "data": 0.016546964645385742,
+          "repeat": 2.3548598289489746,
+          "model": 4.602960109710693,
+          "fold": 2.3218300342559814,
+          "holdout": 0.0018749237060546875,
+          "predictions": 0.0039768218994140625,
+          "selection": 0.01212620735168457,
+          "reports": 0.02125096321105957,
+          "run": 4.822240829467773
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/home/zj/zj_code_libarary/gpse",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/default_parameters/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/default_parameters/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "rf_reg",
+        "--n_repeats",
+        "2",
+        "--train_folds",
+        "4",
+        "--cv_folds",
+        "4",
+        "--trials",
+        "6",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/default_parameters/after_1/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1",
+        "--repeat_workers",
+        "1",
+        "--use_default_params"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 6.257085580000421,
+      "cpu_s": 8.858293000000003,
+      "average_cores": 1.4157218862906151,
+      "peak_rss_sum_mib": 996.14453125,
+      "peak_processes": 6,
+      "peak_resident_threads": 17,
+      "started_epoch": 1792730110.2652247,
+      "case": "default_parameters",
+      "mode": "after",
+      "repetition": 1,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "973f6a2a769d4a43bd4b3bcf390093eb",
+          "timestamp": "2026-10-23T04:35:11.066911+00:00",
+          "run_id": "results",
+          "run_execution_id": "1db78445a6e0448ebb2ef2faa806c2c5",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 174,
+          "cpu_budget": 4,
+          "worker_limit": 4,
+          "threads_per_worker": 1,
+          "scheduling": "shared_fold_repeat_refit_pool",
+          "controller_limit": 1,
+          "fold_workers": 4
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 3.450855255126953,
+        "repeats": {
+          "jobs": 2,
+          "peak_active": 1,
+          "span_s": 0.6857099533081055,
+          "mean_active": 0.9994868007660437
+        },
+        "stacking": {
+          "jobs": 0,
+          "peak_active": 0,
+          "span_s": 0,
+          "mean_active": 0
+        },
+        "trial_count": 0,
+        "stage_total_s": {
+          "data": 0.016803979873657227,
+          "repeat": 0.6853580474853516,
+          "model": 2.282424211502075,
+          "fold": 2.4529078006744385,
+          "holdout": 0.0018658638000488281,
+          "predictions": 0.0039348602294921875,
+          "selection": 0.012135982513427734,
+          "reports": 0.025599002838134766,
+          "run": 5.2221150398254395
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/home/zj/zj_code_libarary/gpse",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/default_parameters/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/default_parameters/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "rf_reg",
+        "--n_repeats",
+        "2",
+        "--train_folds",
+        "4",
+        "--cv_folds",
+        "4",
+        "--trials",
+        "6",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/default_parameters/after_2/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1",
+        "--repeat_workers",
+        "1",
+        "--use_default_params"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 6.153780013999494,
+      "cpu_s": 8.804732000000001,
+      "average_cores": 1.430784327676606,
+      "peak_rss_sum_mib": 995.84765625,
+      "peak_processes": 6,
+      "peak_resident_threads": 17,
+      "started_epoch": 1792730116.5404267,
+      "case": "default_parameters",
+      "mode": "after",
+      "repetition": 2,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "2c544244f5ce4aedb14e560c7b2e34fe",
+          "timestamp": "2026-10-23T04:35:17.354995+00:00",
+          "run_id": "results",
+          "run_execution_id": "bb8ee389935241e5ba32f943b386e475",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 196,
+          "cpu_budget": 4,
+          "worker_limit": 4,
+          "threads_per_worker": 1,
+          "scheduling": "shared_fold_repeat_refit_pool",
+          "controller_limit": 1,
+          "fold_workers": 4
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 3.4702892303466797,
+        "repeats": {
+          "jobs": 2,
+          "peak_active": 1,
+          "span_s": 0.6806521415710449,
+          "mean_active": 0.9995134615963924
+        },
+        "stacking": {
+          "jobs": 0,
+          "peak_active": 0,
+          "span_s": 0,
+          "mean_active": 0
+        },
+        "trial_count": 0,
+        "stage_total_s": {
+          "data": 0.016663074493408203,
+          "repeat": 0.6803209781646729,
+          "model": 2.2421998977661133,
+          "fold": 2.438535690307617,
+          "holdout": 0.002641916275024414,
+          "predictions": 0.003905057907104492,
+          "selection": 0.012890815734863281,
+          "reports": 0.02077007293701172,
+          "run": 5.188346862792969
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/tmp/gpse-before-fold-scheduling-20261023",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/default_parameters/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/default_parameters/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "rf_reg",
+        "--n_repeats",
+        "2",
+        "--train_folds",
+        "4",
+        "--cv_folds",
+        "4",
+        "--trials",
+        "6",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/default_parameters/before_2/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1",
+        "--repeat_workers",
+        "1",
+        "--use_default_params"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 5.9472246570003335,
+      "cpu_s": 5.947911000000005,
+      "average_cores": 1.0001154055949213,
+      "peak_rss_sum_mib": 409.2109375,
+      "peak_processes": 3,
+      "peak_resident_threads": 10,
+      "started_epoch": 1792730122.6989622,
+      "case": "default_parameters",
+      "mode": "before",
+      "repetition": 2,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "54b045f7883f41bea28563b64f02fb33",
+          "timestamp": "2026-10-23T04:35:23.515158+00:00",
+          "run_id": "results",
+          "run_execution_id": "daa432a33e4e44caa4f43b14cdeace47",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 218,
+          "cpu_budget": 4,
+          "worker_limit": 1,
+          "threads_per_worker": 1,
+          "scheduling": "shared_repeat_refit_pool"
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 1.5364277362823486,
+        "repeats": {
+          "jobs": 2,
+          "peak_active": 1,
+          "span_s": 2.3714399337768555,
+          "mean_active": 0.9972536178409779
+        },
+        "stacking": {
+          "jobs": 0,
+          "peak_active": 0,
+          "span_s": 0,
+          "mean_active": 0
+        },
+        "trial_count": 0,
+        "stage_total_s": {
+          "data": 0.019104957580566406,
+          "repeat": 2.364927053451538,
+          "model": 4.692607879638672,
+          "fold": 2.330886125564575,
+          "holdout": 0.002496004104614258,
+          "predictions": 0.0035910606384277344,
+          "selection": 0.012518882751464844,
+          "reports": 0.0221560001373291,
+          "run": 4.907663822174072
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/tmp/gpse-before-fold-scheduling-20261023",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/tiny/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/tiny/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "lasso_reg",
+        "kernelridge_reg",
+        "--n_repeats",
+        "4",
+        "--train_folds",
+        "2",
+        "--cv_folds",
+        "2",
+        "--trials",
+        "2",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/tiny/before_1/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1",
+        "--use_default_params"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 3.1282961090000754,
+      "cpu_s": 8.92575699999999,
+      "average_cores": 2.85323277880271,
+      "peak_rss_sum_mib": 959.6484375,
+      "peak_processes": 7,
+      "peak_resident_threads": 17,
+      "started_epoch": 1792730128.6675477,
+      "case": "tiny",
+      "mode": "before",
+      "repetition": 1,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "b9b12e363fa24b428a17a5844e7bdc48",
+          "timestamp": "2026-10-23T04:35:29.464683+00:00",
+          "run_id": "results",
+          "run_execution_id": "a27be6f9d04444bdbb41358437d5f691",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 230,
+          "cpu_budget": 4,
+          "worker_limit": 4,
+          "threads_per_worker": 1,
+          "scheduling": "shared_repeat_refit_pool"
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 1.5433712005615234,
+        "repeats": {
+          "jobs": 8,
+          "peak_active": 4,
+          "span_s": 0.06860613822937012,
+          "mean_active": 2.912415075324495
+        },
+        "stacking": {
+          "jobs": 6,
+          "peak_active": 4,
+          "span_s": 0.04418492317199707,
+          "mean_active": 2.9906812356670716
+        },
+        "trial_count": 0,
+        "stage_total_s": {
+          "data": 0.004709005355834961,
+          "stacking_fold": 0.09818482398986816,
+          "repeat": 0.19980955123901367,
+          "stacking_refit": 0.03395819664001465,
+          "model": 1.6629552841186523,
+          "fold": 0.15017127990722656,
+          "stacking": 0.9720230102539062,
+          "holdout": 0.002292156219482422,
+          "selection": 0.013459920883178711,
+          "predictions": 0.0019419193267822266,
+          "reports": 0.026111841201782227,
+          "run": 2.0992391109466553
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/home/zj/zj_code_libarary/gpse",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/tiny/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/tiny/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "lasso_reg",
+        "kernelridge_reg",
+        "--n_repeats",
+        "4",
+        "--train_folds",
+        "2",
+        "--cv_folds",
+        "2",
+        "--trials",
+        "2",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/tiny/after_1/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1",
+        "--use_default_params"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 3.128391977999854,
+      "cpu_s": 9.039074,
+      "average_cores": 2.889367465319725,
+      "peak_rss_sum_mib": 963.46875,
+      "peak_processes": 6,
+      "peak_resident_threads": 20,
+      "started_epoch": 1792730131.8014095,
+      "case": "tiny",
+      "mode": "after",
+      "repetition": 1,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "558bd372abed445597e3d4320787b8e9",
+          "timestamp": "2026-10-23T04:35:32.587152+00:00",
+          "run_id": "results",
+          "run_execution_id": "234e1a1c3de54ae3ae25c461b65bd71e",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 266,
+          "cpu_budget": 4,
+          "worker_limit": 4,
+          "threads_per_worker": 1,
+          "scheduling": "shared_fold_repeat_refit_pool",
+          "controller_limit": 4,
+          "fold_workers": 2
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 1.527775526046753,
+        "repeats": {
+          "jobs": 8,
+          "peak_active": 4,
+          "span_s": 0.10513997077941895,
+          "mean_active": 3.3095542065675105
+        },
+        "stacking": {
+          "jobs": 6,
+          "peak_active": 4,
+          "span_s": 0.040326833724975586,
+          "mean_active": 3.1651915834530544
+        },
+        "trial_count": 0,
+        "stage_total_s": {
+          "data": 0.0050029754638671875,
+          "stacking_fold": 0.09399890899658203,
+          "repeat": 0.34796643257141113,
+          "stacking_refit": 0.033643245697021484,
+          "model": 0.27123117446899414,
+          "fold": 0.19381475448608398,
+          "stacking": 0.9681718349456787,
+          "holdout": 0.0024328231811523438,
+          "selection": 0.013435125350952148,
+          "predictions": 0.0017189979553222656,
+          "reports": 0.018796920776367188,
+          "run": 2.1250689029693604
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/home/zj/zj_code_libarary/gpse",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/tiny/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/tiny/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "lasso_reg",
+        "kernelridge_reg",
+        "--n_repeats",
+        "4",
+        "--train_folds",
+        "2",
+        "--cv_folds",
+        "2",
+        "--trials",
+        "2",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/tiny/after_2/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1",
+        "--use_default_params"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 3.127600120998977,
+      "cpu_s": 8.984925000000004,
+      "average_cores": 2.872785731038454,
+      "peak_rss_sum_mib": 963.05859375,
+      "peak_processes": 6,
+      "peak_resident_threads": 20,
+      "started_epoch": 1792730134.946701,
+      "case": "tiny",
+      "mode": "after",
+      "repetition": 2,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "f39182044d4c4817ba516fedee0d1282",
+          "timestamp": "2026-10-23T04:35:35.738987+00:00",
+          "run_id": "results",
+          "run_execution_id": "90b2f256695e4f1d867d6fbc053ab83b",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 306,
+          "cpu_budget": 4,
+          "worker_limit": 4,
+          "threads_per_worker": 1,
+          "scheduling": "shared_fold_repeat_refit_pool",
+          "controller_limit": 4,
+          "fold_workers": 2
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 1.5364840030670166,
+        "repeats": {
+          "jobs": 8,
+          "peak_active": 4,
+          "span_s": 0.09244489669799805,
+          "mean_active": 3.3245121756219342
+        },
+        "stacking": {
+          "jobs": 6,
+          "peak_active": 4,
+          "span_s": 0.03627586364746094,
+          "mean_active": 3.660641989589358
+        },
+        "trial_count": 0,
+        "stage_total_s": {
+          "data": 0.0048329830169677734,
+          "stacking_fold": 0.09815096855163574,
+          "repeat": 0.30733418464660645,
+          "stacking_refit": 0.03464198112487793,
+          "model": 0.2261650562286377,
+          "fold": 0.16228532791137695,
+          "stacking": 0.9664020538330078,
+          "holdout": 0.0024449825286865234,
+          "selection": 0.015091180801391602,
+          "predictions": 0.001837015151977539,
+          "reports": 0.02007293701171875,
+          "run": 2.1088171005249023
+        }
+      }
+    },
+    {
+      "command": [
+        "/home/zj/.pyenv/versions/gpse/bin/python",
+        "-c",
+        "import runpy,sys; sys.path.insert(0,sys.argv.pop(1)); runpy.run_module('gpse.train.cli',run_name='__main__')",
+        "/tmp/gpse-before-fold-scheduling-20261023",
+        "--geno_file",
+        "/tmp/gpse-fold-scheduling-20261023/tiny/genotype.csv",
+        "--pheno_file",
+        "/tmp/gpse-fold-scheduling-20261023/tiny/phenotype.csv",
+        "--target_trait",
+        "yield",
+        "--task_type",
+        "regression",
+        "--models",
+        "lasso_reg",
+        "kernelridge_reg",
+        "--n_repeats",
+        "4",
+        "--train_folds",
+        "2",
+        "--cv_folds",
+        "2",
+        "--trials",
+        "2",
+        "--model_config",
+        "/tmp/gpse-fold-scheduling-20261023/models.yaml",
+        "--results_dir",
+        "/tmp/gpse-fold-scheduling-20261023/tiny/before_2/results",
+        "--threads",
+        "4",
+        "--n_jobs",
+        "1",
+        "--use_default_params"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_s": 3.128732133000085,
+      "cpu_s": 8.953725999999989,
+      "average_cores": 2.861774552561143,
+      "peak_rss_sum_mib": 963.30859375,
+      "peak_processes": 7,
+      "peak_resident_threads": 17,
+      "started_epoch": 1792730138.0804455,
+      "case": "tiny",
+      "mode": "before",
+      "repetition": 2,
+      "events": {
+        "scheduler": {
+          "schema_version": 1,
+          "event_id": "075b5bd825dc4c06b310125f8865774e",
+          "timestamp": "2026-10-23T04:35:38.878725+00:00",
+          "run_id": "results",
+          "run_execution_id": "24be40c6669a446b9c0d7b02b5e08f3d",
+          "model": null,
+          "repeat": null,
+          "fold": null,
+          "trial": null,
+          "stage": "scheduler",
+          "status": "configured",
+          "pid": 346,
+          "cpu_budget": 4,
+          "worker_limit": 4,
+          "threads_per_worker": 1,
+          "scheduling": "shared_repeat_refit_pool"
+        },
+        "worker_native_pools": [
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ],
+          [
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+              "version": "0.3.29",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "blas",
+              "internal_api": "openblas",
+              "num_threads": 1,
+              "prefix": "libscipy_openblas",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+              "version": "0.3.28",
+              "threading_layer": "pthreads",
+              "architecture": "SkylakeX"
+            },
+            {
+              "user_api": "openmp",
+              "internal_api": "openmp",
+              "num_threads": 1,
+              "prefix": "libgomp",
+              "filepath": "/home/zj/.pyenv/versions/3.10.18/envs/gpse/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0",
+              "version": null
+            }
+          ]
+        ],
+        "first_repeat_start_s": 1.5431663990020752,
+        "repeats": {
+          "jobs": 8,
+          "peak_active": 4,
+          "span_s": 0.09064507484436035,
+          "mean_active": 2.29942687003706
+        },
+        "stacking": {
+          "jobs": 6,
+          "peak_active": 4,
+          "span_s": 0.0561521053314209,
+          "mean_active": 2.3264322623652443
+        },
+        "trial_count": 0,
+        "stage_total_s": {
+          "data": 0.004858970642089844,
+          "stacking_fold": 0.09594917297363281,
+          "repeat": 0.20843172073364258,
+          "stacking_refit": 0.03468489646911621,
+          "model": 1.6847870349884033,
+          "fold": 0.15336084365844727,
+          "stacking": 0.999845027923584,
+          "holdout": 0.0031108856201171875,
+          "selection": 0.013859987258911133,
+          "predictions": 0.0017590522766113281,
+          "reports": 0.018882036209106445,
+          "run": 2.136162042617798
+        }
+      }
+    }
+  ],
+  "checks": [
+    {
+      "case": "frozen_search",
+      "repetition": 1,
+      "passed": true,
+      "max_numeric_absolute_difference": 0.0,
+      "tolerance": 1e-12
+    },
+    {
+      "case": "frozen_search",
+      "repetition": 2,
+      "passed": true,
+      "max_numeric_absolute_difference": 0.0,
+      "tolerance": 1e-12
+    },
+    {
+      "case": "one_repeat_at_a_time",
+      "repetition": 1,
+      "passed": true,
+      "max_numeric_absolute_difference": 0.0,
+      "tolerance": 1e-12
+    },
+    {
+      "case": "one_repeat_at_a_time",
+      "repetition": 2,
+      "passed": true,
+      "max_numeric_absolute_difference": 0.0,
+      "tolerance": 1e-12
+    },
+    {
+      "case": "default_parameters",
+      "repetition": 1,
+      "passed": true,
+      "max_numeric_absolute_difference": 0.0,
+      "tolerance": 1e-12
+    },
+    {
+      "case": "default_parameters",
+      "repetition": 2,
+      "passed": true,
+      "max_numeric_absolute_difference": 0.0,
+      "tolerance": 1e-12
+    },
+    {
+      "case": "tiny",
+      "repetition": 1,
+      "passed": true,
+      "max_numeric_absolute_difference": 0.0,
+      "tolerance": 1e-12
+    },
+    {
+      "case": "tiny",
+      "repetition": 2,
+      "passed": true,
+      "max_numeric_absolute_difference": 0.0,
+      "tolerance": 1e-12
+    }
+  ],
+  "aggregate": [
+    {
+      "case": "frozen_search",
+      "before_wall_s": 6.705079965499863,
+      "before_cpu_s": 9.042488500000001,
+      "before_average_cores": 1.3484338212721163,
+      "before_peak_rss_sum_mib": 880.84375,
+      "before_optimization_s": 1.6009291410446167,
+      "after_wall_s": 5.952889107499686,
+      "after_cpu_s": 9.8509785,
+      "after_average_cores": 1.6548225391044928,
+      "after_peak_rss_sum_mib": 980.146484375,
+      "after_optimization_s": 0.6222965717315674,
+      "time_reduction_percent": 11.21822352411126
+    },
+    {
+      "case": "one_repeat_at_a_time",
+      "before_wall_s": 9.878395913499844,
+      "before_cpu_s": 9.914765499999994,
+      "before_average_cores": 1.0037306779175206,
+      "before_peak_rss_sum_mib": 408.5859375,
+      "before_optimization_s": 4.301347970962524,
+      "after_wall_s": 7.462208799500331,
+      "after_cpu_s": 13.513249000000002,
+      "after_average_cores": 1.8114396959952828,
+      "after_peak_rss_sum_mib": 993.91796875,
+      "after_optimization_s": 1.2332279682159424,
+      "time_reduction_percent": 24.459306299897786
+    },
+    {
+      "case": "default_parameters",
+      "before_wall_s": 5.895422972000233,
+      "before_cpu_s": 5.870526500000004,
+      "before_average_cores": 0.9957385242846071,
+      "before_peak_rss_sum_mib": 409.287109375,
+      "before_optimization_s": 0,
+      "after_wall_s": 6.205432796999958,
+      "after_cpu_s": 8.831512500000002,
+      "after_average_cores": 1.4232531069836105,
+      "after_peak_rss_sum_mib": 995.99609375,
+      "after_optimization_s": 0,
+      "time_reduction_percent": -5.258483173677053
+    },
+    {
+      "case": "tiny",
+      "before_wall_s": 3.12851412100008,
+      "before_cpu_s": 8.93974149999999,
+      "before_average_cores": 2.857503665681927,
+      "before_peak_rss_sum_mib": 961.478515625,
+      "before_optimization_s": 0,
+      "after_wall_s": 3.1279960494994157,
+      "after_cpu_s": 9.011999500000002,
+      "after_average_cores": 2.8810765981790896,
+      "after_peak_rss_sum_mib": 963.263671875,
+      "after_optimization_s": 0,
+      "time_reduction_percent": 0.01655966636643358
+    }
+  ],
+  "validation": {
+    "full_suite": "256 passed, 2 failed in 101.35s",
+    "full_suite_log": "/tmp/gpse-fold-scheduler-full-tests.log",
+    "baseline_failure_log": "/tmp/gpse-fold-scheduling-baseline-failures.log",
+    "current_isolated_failure_log": "/tmp/gpse-fold-scheduling-isolated-failures.log",
+    "existing_failures": [
+      "test_find_result_file_depth_limit",
+      "test_multi_trait_genotype_files_are_hardlinked"
+    ],
+    "new_tests": 10,
+    "baseline_reproduced_both_existing_failures": true,
+    "current_isolated_hardlink_test_passed": true,
+    "result_comparisons": [
+      "holdout sample IDs",
+      "CV fold assignments",
+      "all train/validation/holdout predictions",
+      "all repeat/fold metrics",
+      "hyperparameters and complete optimization info",
+      "trial states, parameters and objectives",
+      "TOPSIS and final holdout metrics including GPSE"
+    ],
+    "excluded_metadata": [
+      "elapsed times",
+      "artifact paths",
+      "source code/config version fingerprints"
+    ],
+    "max_numeric_absolute_difference": 0
+  },
+  "scope": "Alternating before/after source snapshots, same synthetic data/config, 4 CPUs and 1 native thread per fit; no 90-core hardware measurements"
+}

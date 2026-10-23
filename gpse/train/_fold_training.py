@@ -45,6 +45,7 @@ def _train_single_fold(
     repeat_dir,
     all_predictions: Dict,
     task_logger,
+    ensemble_predictions=None,
 ) -> Optional[Dict]:
     """Train a single fold and return the results."""
     try:
@@ -73,6 +74,7 @@ def _train_single_fold(
         X_test_scaled = preprocessor.transform(X_test)
 
         # Predict and calculate metrics
+        y_test_proba = None
         if self.task_type == "classification":
             (
                 y_fold_train_pred,
@@ -201,6 +203,12 @@ def _train_single_fold(
             model_name=model_name,
             repeat_idx=repeat_idx,
         )
+
+        if ensemble_predictions is not None:
+            # Retain only the small holdout outputs, not K fitted models or
+            # their preprocessing state. The repeat can ensemble these without
+            # training again or reading the optional model artifacts from disk.
+            ensemble_predictions.append((y_test_pred, y_test_proba))
 
         return fold_result
 

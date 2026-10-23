@@ -145,6 +145,8 @@ class GenomicPredictorV2:
         feature_id_mode: str | None = None,
         cv_stability_metric: str = "cv_std_repeat",
         output_paths=None,
+        cpu_budget: int | None = None,
+        fold_workers: int | None = None,
     ):
         """
         Initialize the predictor.
@@ -163,6 +165,9 @@ class GenomicPredictorV2:
             Maximum models trained in parallel.
         repeat_workers : int
             Maximum repeats trained in parallel within each model.
+        fold_workers : int, optional
+            Concurrent folds per repeat/trial within cpu_budget; None uses all
+            available fold slots, and 1 keeps repeat-level scheduling.
         test_size : float
             Test set proportion.
         n_splits : int
@@ -204,6 +209,17 @@ class GenomicPredictorV2:
         self.n_threads = n_threads
         self.max_parallel_jobs = max_parallel_jobs
         self.repeat_workers = repeat_workers
+        if fold_workers is not None and fold_workers < 1:
+            raise ValueError("fold_workers must be positive")
+        if fold_workers is not None and fold_workers > 1 and cpu_budget is None:
+            raise ValueError("fold_workers > 1 requires an explicit cpu_budget")
+        self.fold_workers = fold_workers
+        if cpu_budget is not None:
+            from gpse.utils.parallel import resolve_cpu_budget
+            cpu_budget = resolve_cpu_budget(cpu_budget)
+            if n_threads < 1 or n_threads > cpu_budget or min(max_parallel_jobs, repeat_workers) < 1:
+                raise ValueError("Invalid shared-pool thread/worker limits")
+        self.cpu_budget = cpu_budget
         self.test_size = test_size
         self.n_splits = n_splits
         self.n_repeats = n_repeats

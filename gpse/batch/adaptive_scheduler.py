@@ -289,6 +289,10 @@ def _classify_failure(task: TraitTask) -> str:
 # Task runner
 # --------------------------------------------------------------------------- #
 
+from gpse.utils.process_control import stop_subprocess
+from gpse.utils.parallel import resolve_cpu_budget
+
+
 class TaskRunner:
     def __init__(self, logger):
         self.logger = logger
@@ -308,6 +312,7 @@ class TaskRunner:
             env=env,
             start_new_session=True,
         )
+        log_f.close()
         with self._lock:
             self._active[task.key] = proc
         task.status = "RUNNING"
@@ -349,17 +354,7 @@ class TaskRunner:
             proc = self._active.pop(key, None)
         if proc is None:
             return
-        try:
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-        except (ProcessLookupError, OSError):
-            pass
-        try:
-            proc.wait(timeout=15)
-        except subprocess.TimeoutExpired:
-            try:
-                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-            except (ProcessLookupError, OSError):
-                pass
+        stop_subprocess(proc)
 
     def shutdown_all(self) -> None:
         with self._lock:
@@ -392,9 +387,11 @@ class AdaptiveScheduler:
         dry_run: bool = False,
     ):
         self.tasks = {t.key: t for t in tasks if t.enabled}
-        self.max_threads = max_threads
-        self.threads_per_trait = threads_per_trait
-        self.min_threads_per_trait = min_threads_per_trait
+        self.max_threads = resolve_cpu_budget(max_threads)
+        if min(threads_per_trait, min_threads_per_trait) < 1:
+            raise ValueError("Per-trait CPU budgets must be positive")
+        self.threads_per_trait = min(threads_per_trait, self.max_threads)
+        self.min_threads_per_trait = min(min_threads_per_trait, self.threads_per_trait)
         self.min_free_mem_gb = min_free_mem_gb
         self.mem_per_trait_gb = mem_per_trait_gb
         self.max_concurrent_traits = max_concurrent_traits
@@ -410,10 +407,10 @@ class AdaptiveScheduler:
         self.runner = TaskRunner(self._make_logger())
         self._stop = threading.Event()
         self._current_concurrency = compute_concurrency(
-            max_threads, threads_per_trait,
+            self.max_threads, self.threads_per_trait,
             min_free_mem_gb, mem_per_trait_gb, max_concurrent_traits,
         )
-        self._current_threads_per_trait = threads_per_trait
+        self._current_threads_per_trait = self.threads_per_trait
         self._last_downgrade_ts = 0.0
         self._last_upgrade_ts = 0.0
         self._last_oom_counts = read_cgroup_oom_counts()
@@ -530,8 +527,10 @@ class AdaptiveScheduler:
             return 0
 
         self._restore_from_status()
-        signal.signal(signal.SIGTERM, lambda *_: self._stop.set())
-        signal.signal(signal.SIGINT, lambda *_: self._stop.set())
+        signals = [signal.SIGTERM, signal.SIGINT]
+        if hasattr(signal, "SIGHUP"):
+            signals.append(signal.SIGHUP)
+        previous_handlers = {sig: signal.signal(sig, lambda *_: self._stop.set()) for sig in signals}
 
         try:
             while not self._stop.is_set():
@@ -571,6 +570,8 @@ class AdaptiveScheduler:
                         self._stop.wait(self.memory_poll_seconds)
                         continue
                     for task in self._pending()[:budget_slots]:
+                        if self._stop.is_set():
+                            break
                         self._apply_runtime_params(task)
                         self.runner.start(task)
                         self._persist(task)
@@ -581,8 +582,19 @@ class AdaptiveScheduler:
 
                 self._stop.wait(self.memory_poll_seconds)
         finally:
-            self.runner.shutdown_all()
-            self._write_tsv()
+            try:
+                self.runner.shutdown_all()
+                if self._stop.is_set():
+                    for key in self._running_keys():
+                        task = self.tasks[key]
+                        task.status = "INTERRUPTED"
+                        task.exit_code = 130
+                        task.end_time = _now_iso()
+                        self._persist(task)
+                self._write_tsv()
+            finally:
+                for sig, handler in previous_handlers.items():
+                    signal.signal(sig, handler)
 
         mem_fail = [t for t in self.tasks.values() if t.status == "FAILED_MEM"]
         non_mem = [t for t in self.tasks.values() if t.status == "FAILED_NON_MEMORY"]
@@ -590,21 +602,19 @@ class AdaptiveScheduler:
             f"DONE  total={len(self.tasks)} done={sum(1 for t in self.tasks.values() if t.status == 'DONE')} "
             f"failed_mem={len(mem_fail)} failed_non_mem={len(non_mem)}"
         )
-        return 0 if not (mem_fail or non_mem) else 1
+        return 130 if self._stop.is_set() else (0 if not (mem_fail or non_mem) else 1)
 
     def _apply_runtime_params(self, task: TraitTask) -> None:
         """Inject current threads/max_workers budget into the task command."""
         task.threads = self._current_threads_per_trait
-        # Derive a conservative max_workers (models-level parallelism) from the
-        # per-trait thread budget, keeping n_jobs=1 and repeat_workers=1 so the
-        # total process count stays at threads_per_trait.
+        # The shared pool enforces this trait's total CPU budget.
         task.max_workers = max(1, self._current_threads_per_trait)
         # Patch the command in place: replace --threads/--max_workers values.
         cmd = list(task.command)
         cmd = _upsert_flag(cmd, "--threads", str(task.threads))
-        cmd = _upsert_flag(cmd, "--max_workers", str(task.max_workers))
-        cmd = _upsert_flag(cmd, "--n_jobs", "1")
-        cmd = _upsert_flag(cmd, "--repeat_workers", "1")
+        # A trait owns one shared CPU budget; do not pin independent repeats to 1.
+        # Existing task-level caps supplied in YAML are retained.
+
         task.command = cmd
 
     def _finalize(self, task: TraitTask) -> None:
@@ -747,29 +757,15 @@ def _build_tasks_from_config(cfg: Dict[str, Any], results_root: Path) -> List[Tr
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / f"{name}.log"
 
-        cmd = list(merged.get("gpse_command") or ["python", "-m", "gpse", "train"])
-        cmd += [
-            "--geno_file", str(merged["geno_file"]),
-            "--pheno_file", str(merged["pheno_file"]),
-            "--target_trait", name,
-            "--task_type", str(merged.get("task_type", "regression")),
-            "--results_dir", str(res_dir),
-            "--n_repeats", str(merged.get("n_repeats", 50)),
-            "--n_splits", str(merged.get("n_splits", 5)),
-            "--random_seed", str(merged.get("random_seed", 42)),
-            "--threads", str(merged.get("threads", 8)),
-            "--max_workers", str(merged.get("max_workers", 8)),
-            "--n_jobs", "1",
-            "--repeat_workers", "1",
-        ]
-        if merged.get("cv_file"):
-            cmd += ["--cv_file", str(merged["cv_file"])]
-        if merged.get("use_stacking"):
-            cmd.append("--use_stacking")
-            if merged.get("top_n_models"):
-                cmd += ["--top_n_models", str(merged["top_n_models"])]
-        if merged.get("models"):
-            cmd += ["--models"] + [str(m) for m in merged["models"]]
+        from gpse.batch.runner import _train_option_actions, build_trait_argv
+        actions = _train_option_actions()
+        settings = {key: value for key, value in merged.items()
+                    if key in actions and key not in {"target_trait", "results_dir"}}
+        settings.setdefault("task_type", "regression")
+        settings.setdefault("threads", 8)
+        settings["results_dir"] = str(res_dir)
+        cmd = list(merged.get("gpse_command") or [sys.executable, "-m", "gpse.train.cli"])
+        cmd += build_trait_argv(settings, {"name": name}, actions)
 
         tasks.append(TraitTask(
             species=str(species),
@@ -794,7 +790,7 @@ def _parse_args(argv: List[str]) -> argparse.Namespace:
                    help="YAML describing traits and GPSE command.")
     p.add_argument("--results-root", type=Path, default=None,
                    help="Override results root (default: <config>/results).")
-    p.add_argument("--max-threads", type=int, default=90)
+    p.add_argument("--max-threads", type=str, default="auto", help="Total CPU budget: auto, -1, or an integer")
     p.add_argument("--min-free-mem-gb", type=float, default=64.0)
     p.add_argument("--mem-per-trait-gb", type=float, default=32.0)
     p.add_argument("--threads-per-trait", type=int, default=8)

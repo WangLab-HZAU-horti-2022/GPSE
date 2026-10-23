@@ -14,6 +14,15 @@ import os
 import sys
 import traceback
 
+# Bootstrap before NumPy/scipy imports; per-job threadpool_limits enforce the resolved budget.
+_bootstrap_parser = argparse.ArgumentParser(add_help=False)
+_bootstrap_parser.add_argument("--n_jobs", type=int, default=1)
+_bootstrap_args, _ = _bootstrap_parser.parse_known_args()
+for _variable in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
+                  "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS", "BLIS_NUM_THREADS"):
+    os.environ[_variable] = os.environ.get("GPSE_NATIVE_THREADS", str(max(1, _bootstrap_args.n_jobs)))
+del _bootstrap_parser, _bootstrap_args, _variable
+
 from gpse.convert.processor import GenomicDataProcessor
 from gpse.train.predictor import GenomicPredictorV2, main_logger
 from gpse.train.workflow import (
@@ -22,7 +31,8 @@ from gpse.train.workflow import (
     _log_stage,
     _show_version,
 )
-from gpse.utils.parallel import derive_parallelism_from_threads, validate_parallelism
+from gpse.utils.parallel import resolve_cpu_budget, validate_parallelism
+from gpse.utils.process_control import interruptible_entry
 
 try:
     from rich_argparse import RichHelpFormatter
@@ -86,38 +96,39 @@ def _resolve_model_count(args: argparse.Namespace) -> int:
     )
 
 
-def _apply_threads_budget(args: argparse.Namespace) -> None:
-    """Auto-derive max_workers/repeat_workers from --threads if requested."""
-    if args.threads is None:
+def _apply_threads_budget(args: argparse.Namespace, *, log: bool = True) -> None:
+    """One budget for the shared pool; explicit legacy knobs remain respected."""
+    explicit = getattr(args, "_explicit_parallel", set())
+    if args.fold_workers is not None and args.fold_workers < 1:
+        raise ValueError("--fold_workers must be a positive integer")
+    args.cpu_budget = None
+    if args.threads is None and explicit and args.fold_workers in {None, 1}:
         return
-
-    n_models = _resolve_model_count(args)
-    args.n_jobs, args.max_workers, args.repeat_workers = derive_parallelism_from_threads(
-        threads=args.threads,
-        n_models=n_models,
-        n_repeats=args.n_repeats,
-        n_jobs=args.n_jobs,
-        max_workers=args.max_workers,
-        repeat_workers=args.repeat_workers,
-        explicit=getattr(args, "_explicit_parallel", set()),
-    )
-
-    capacity = args.n_jobs * args.max_workers * args.repeat_workers
-    model_slots = min(args.max_workers, n_models)
-    repeat_slots = min(args.repeat_workers, args.n_repeats) if args.optuna_per_repeat else 1
-    main_logger.bind(console_summary=True).info(
-        f"--threads {args.threads}: n_jobs={args.n_jobs}, max_workers={args.max_workers}, "
-        f"repeat_workers={args.repeat_workers}; configured capacity={capacity}, "
-        f"training task ceiling={model_slots * repeat_slots}, "
-        f"thread capacity ceiling={model_slots * repeat_slots * args.n_jobs}. "
-        "These are upper bounds, not measured CPU concurrency."
-    )
-    if args.repeat_workers > 1 and not args.optuna_per_repeat:
+    budget = resolve_cpu_budget(args.threads)
+    count = _resolve_model_count(args)
+    folds = min(args.n_splits, args.fold_workers or args.n_splits)
+    model_slots = min(count, args.max_workers) if "max_workers" in explicit else count
+    repeats = min(args.n_repeats, args.repeat_workers) if "repeat_workers" in explicit else args.n_repeats
+    if "n_jobs" not in explicit:
+        args.n_jobs = max(1, budget // max(1, min(budget, model_slots * repeats * folds)))
+    if min(args.n_jobs, args.max_workers, args.repeat_workers) < 1 or args.n_jobs > budget:
+        raise ValueError("Worker counts must be positive and --n_jobs must not exceed the CPU budget")
+    slots = max(1, budget // args.n_jobs)
+    if "max_workers" not in explicit:
+        args.max_workers = min(count, slots)
+    if "repeat_workers" not in explicit:
+        args.repeat_workers = min(args.n_repeats, slots)
+    args.cpu_budget = budget
+    if log:
+        tasks = min(slots, min(count, args.max_workers) * min(args.n_repeats, args.repeat_workers) * folds)
         main_logger.bind(console_summary=True).info(
-            "Repeats run sequentially while repeat-1 parameters are frozen (optuna_per_repeat=False)."
+            f"CPU budget={budget}; shared pool ceiling={tasks} training tasks × "
+            f"{args.n_jobs} native thread(s). Idle slots are reused across models. "
+            "Actual CPU usage depends on the estimator and available independent work."
         )
 
 
+@interruptible_entry
 def main(
     argv: list[str] | None = None,
     *,
@@ -161,12 +172,13 @@ def main(
         _apply_threads_budget(args)
 
         try:
-            args.n_jobs, args.max_workers, args.repeat_workers = validate_parallelism(
-                args.n_jobs,
-                args.max_workers,
-                args.repeat_workers,
-                logger=main_logger,
-            )
+            if args.cpu_budget is None:
+                args.n_jobs, args.max_workers, args.repeat_workers = validate_parallelism(
+                    args.n_jobs,
+                    args.max_workers,
+                    args.repeat_workers,
+                    logger=main_logger,
+                )
         except ValueError:
             return 1
 
@@ -226,6 +238,7 @@ def main(
                 "load": args.load_matrix_info,
                 "trait_name": args.target_trait,
                 "standardize_phenotype": False,
+                "threads": args.cpu_budget or (args.n_jobs * args.max_workers * args.repeat_workers),
             }
 
             if args.standardize_phenotype:
@@ -338,8 +351,10 @@ def main(
             output_paths=output_paths,
             n_trials=args.trials,
             n_threads=args.n_jobs,
+            cpu_budget=args.cpu_budget or (args.n_jobs * args.max_workers * args.repeat_workers),
             max_parallel_jobs=args.max_workers,
             repeat_workers=args.repeat_workers,
+            fold_workers=args.fold_workers,
             test_size=args.test_size,
             n_splits=args.n_splits,
             n_repeats=args.n_repeats,

@@ -17,7 +17,7 @@ import argparse
 _thread_pre_parser = argparse.ArgumentParser(add_help=False)
 _thread_pre_parser.add_argument("--n_jobs", type=int, default=1)
 _thread_pre_args, _ = _thread_pre_parser.parse_known_args()
-_thread_n = str(_thread_pre_args.n_jobs)
+_thread_n = os.environ.get("GPSE_NATIVE_THREADS", str(_thread_pre_args.n_jobs))
 for _env_var in (
     "OMP_NUM_THREADS",
     "MKL_NUM_THREADS",

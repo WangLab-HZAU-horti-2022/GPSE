@@ -16,6 +16,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Sequence
 
+from gpse.utils.process_control import run_subprocess
 from gpse.utils.configuration import load_software_config
 from gpse.utils.dependency_checker import check_all_external_tools, check_external_tool
 
@@ -347,7 +348,7 @@ def run_command(
     if log_file:
         try:
             with open(log_file, "a") as f:
-                subprocess.run(cmd_args, stdout=f, stderr=f, check=True)
+                run_subprocess(cmd_args, stdout=f, stderr=f, check=True)
         except subprocess.CalledProcessError as exc:
             if logger is not None:
                 _plink_chr_error_hint(cmd_args, logger)
@@ -365,7 +366,7 @@ def run_command(
         # GPSE's own log format instead of being dumped raw to the terminal.
         if logger is not None:
             try:
-                result = subprocess.run(
+                result = run_subprocess(
                     cmd_args, capture_output=True, check=True
                 )
             except subprocess.CalledProcessError as exc:
@@ -397,4 +398,4 @@ def run_command(
                 if out_prefix:
                     _log_bfile_stats(out_prefix, "PLINK", logger)
         else:
-            subprocess.run(cmd_args, check=True)
+            run_subprocess(cmd_args, check=True)

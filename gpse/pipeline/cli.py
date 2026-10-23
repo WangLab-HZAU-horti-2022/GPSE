@@ -20,6 +20,7 @@ from datetime import datetime
 from gpse.convert.workflow import run_convert_workflow, validate_convert_mode
 from gpse.utils.cli_display import _build_pipeline_parser
 from gpse.utils.log_utils import logger_init
+from gpse.utils.process_control import interruptible_entry
 
 try:
     from gpse.utils.log_utils import logger as gpse_logger
@@ -86,6 +87,7 @@ def _resolve_convert_outputs(args: argparse.Namespace) -> tuple[str, str]:
     )
 
 
+@interruptible_entry
 def main(
     argv: list[str] | None = None,
     *,

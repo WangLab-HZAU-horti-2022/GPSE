@@ -222,14 +222,22 @@ def _build_parser(
         help="Repeat-level parallelism: maximum number of repeats per model to run at the same time (default: 1)",
     )
     performance_group.add_argument(
-        "--threads",
+        "--fold_workers",
         type=int,
         default=None,
         help=(
-            "Theoretical parallel capacity budget. When set, "
-            "GPSE automatically derives --max_workers and --repeat_workers from this budget "
-            "(including per-model threads). Explicit worker/thread options take precedence. "
-            "Cannot exceed available CPU cores."
+            "Maximum concurrent folds per repeat or Optuna trial (default: automatic within "
+            "the shared CPU budget). Use 1 for repeat-level scheduling only."
+        ),
+    )
+    performance_group.add_argument(
+        "--threads",
+        type=str,
+        default=None,
+        help=(
+            "Total CPU budget: auto (or -1) uses all available cores; an integer caps usage. "
+            "Automatic by default unless manual worker/thread options are supplied. "
+            "One shared pool distributes CV folds, Optuna folds and model refits."
         ),
     )
 

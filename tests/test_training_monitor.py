@@ -180,7 +180,7 @@ def test_nested_parallel_repeats_optuna_and_stacking(inputs, tmp_path):
         == pytest.approx(e["metrics"]["cv_mean"] - 0.5 * e["metrics"]["cv_std"])
         for e in complete_trials
     )
-    assert len({e["pid"] for e in done("repeat")}) >= 2
+    assert len({e["pid"] for e in done("fold")}) >= 2
     assert (out / "ensembles/gpse/stacking_ensemble_model.pkl").exists()
 
 

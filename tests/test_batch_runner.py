@@ -124,6 +124,7 @@ def test_build_trait_argv_boolean_optional_action(actions):
 
 
 def test_run_batch_dry_run(tmp_path, monkeypatch):
+    monkeypatch.setattr("gpse.train.cli._resolve_model_count", lambda args: 15)
     messages = []
     monkeypatch.setattr("gpse.batch.runner.main_logger.info", messages.append)
     monkeypatch.setattr(

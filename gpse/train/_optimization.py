@@ -26,6 +26,48 @@ from threadpoolctl import threadpool_limits
 from gpse.train._model_pipeline import build_training_pipeline
 
 
+def evaluate_optimization_fold(self, X, y, model_name, params, train_idx, val_idx, fold_idx, log):
+    """Evaluate one trial fold, shared by serial and budgeted process execution."""
+    X_fold_train, X_fold_val = X.iloc[train_idx], X.iloc[val_idx]
+    y_fold_train, y_fold_val = y.iloc[train_idx], y.iloc[val_idx]
+    log.debug(f"Training fold {fold_idx + 1}...")
+    try:
+        fold_model = build_training_pipeline(
+            self.create_model(model_name, params),
+            task_type=self.task_type,
+            model_name=model_name,
+            feature_selection_config=self.feature_selection_config,
+            genotype_imputation_config=self.genotype_imputation_config,
+        )
+        with threadpool_limits(limits=self.n_threads):
+            fold_model.fit(X_fold_train, y_fold_train)
+            if self.task_type == "classification":
+                y_fold_pred, y_fold_proba = (
+                    self.genomic_classifier.generate_classification_labels_from_model(
+                        fold_model, X_fold_val
+                    )
+                )
+                self.genomic_classifier.calculate_classification_metrics(
+                    y_fold_val, y_fold_pred, y_fold_proba
+                )
+                return balanced_accuracy_score(y_fold_val, y_fold_pred)
+            y_fold_pred = fold_model.predict(X_fold_val)
+        if (
+            not np.isfinite(y_fold_pred).all()
+            or len(y_fold_val) < 2
+            or np.ptp(y_fold_pred) == 0
+            or np.ptp(y_fold_val) == 0
+        ):
+            raise ValueError("Undefined validation Pearson (constant/non-finite input)")
+        score = pearsonr(y_fold_val, y_fold_pred)[0]
+        if not np.isfinite(score):
+            raise ValueError("Non-finite validation Pearson")
+        return score
+    except Exception as exc:
+        log.error(f"Fold {fold_idx + 1} training failed: {exc}")
+        raise optuna.TrialPruned(f"Invalid CV fold {fold_idx + 1}: {exc}") from exc
+
+
 @observed("optimization")
 def optimize_model_parameters(
     self,
@@ -35,6 +77,8 @@ def optimize_model_parameters(
     repeat_idx: int,
     task_logger=None,
     cv_pheno_data=None,
+    fold_runner=None,
+    cv_folds=None,
 ) -> Dict[str, Any]:
     """
     Optimize model parameters using Optuna.
@@ -73,7 +117,11 @@ def optimize_model_parameters(
     )
 
     # Get CV folds
-    folds = self.generate_cv_folds_from_file(X, y, cv_pheno_data, repeat_idx, task_logger)
+    folds = (
+        cv_folds
+        if cv_folds is not None
+        else self.generate_cv_folds_from_file(X, y, cv_pheno_data, repeat_idx, task_logger)
+    )
 
     # Determinism comes from the TPESampler seed and per-model random_state
     # (merged from YAML default_params); avoid mutating global numpy RNG state
@@ -88,55 +136,26 @@ def optimize_model_parameters(
 
         filtered_params = self.filter_model_params_unified(model_name, params)
 
-        cv_scores = []
-
         log.debug(f"Evaluating parameter set: {filtered_params}")
-
-        for fold_idx, (train_idx, val_idx) in enumerate(folds):
-            with observation("optimization_fold", fold=fold_idx + 1):
-                X_fold_train = X.iloc[train_idx]
-                X_fold_val = X.iloc[val_idx]
-                y_fold_train = y.iloc[train_idx]
-                y_fold_val = y.iloc[val_idx]
-
-                log.debug(f"Training fold {fold_idx + 1}...")
-                try:
-                    fold_model = build_training_pipeline(
-                        self.create_model(model_name, filtered_params),
-                        task_type=self.task_type,
-                        model_name=model_name,
-                        feature_selection_config=self.feature_selection_config,
-                        genotype_imputation_config=self.genotype_imputation_config,
+        if fold_runner is not None:
+            cv_scores = fold_runner(filtered_params, folds, trial.number)
+        else:
+            cv_scores = []
+            for fold_idx, (train_idx, val_idx) in enumerate(folds):
+                with observation("optimization_fold", fold=fold_idx + 1):
+                    cv_scores.append(
+                        evaluate_optimization_fold(
+                            self,
+                            X,
+                            y,
+                            model_name,
+                            filtered_params,
+                            train_idx,
+                            val_idx,
+                            fold_idx,
+                            log,
+                        )
                     )
-                    with threadpool_limits(limits=self.n_threads):
-                        fold_model.fit(X_fold_train, y_fold_train)
-
-                    if self.task_type == "classification":
-                        (
-                            y_fold_pred,
-                            y_fold_proba,
-                        ) = self.genomic_classifier.generate_classification_labels_from_model(
-                            fold_model, X_fold_val
-                        )
-                        fold_metrics = self.genomic_classifier.calculate_classification_metrics(
-                            y_fold_val, y_fold_pred, y_fold_proba
-                        )
-                        fold_score = balanced_accuracy_score(y_fold_val, y_fold_pred)
-                    else:
-                        y_fold_pred = fold_model.predict(X_fold_val)
-
-                        if (not np.isfinite(y_fold_pred).all() or len(y_fold_val) < 2
-                                or np.ptp(y_fold_pred) == 0 or np.ptp(y_fold_val) == 0):
-                            raise ValueError("Undefined validation Pearson (constant/non-finite input)")
-                        fold_score = pearsonr(y_fold_val, y_fold_pred)[0]
-                        if not np.isfinite(fold_score):
-                            raise ValueError("Non-finite validation Pearson")
-
-                    cv_scores.append(fold_score)
-
-                except Exception as e:
-                    log.error(f"Fold {fold_idx + 1} training failed: {str(e)}")
-                    raise optuna.TrialPruned(f"Invalid CV fold {fold_idx + 1}: {e}") from e
 
         if len(cv_scores) != self.n_splits:
             raise optuna.TrialPruned("Incomplete CV trial; every configured fold is required")
@@ -159,11 +178,7 @@ def optimize_model_parameters(
             if not any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
                 return False
             best_value = study.best_value
-            recent_trials = [
-                t.value
-                for t in study.trials[-self.patience :]
-                if t.value is not None
-            ]
+            recent_trials = [t.value for t in study.trials[-self.patience :] if t.value is not None]
             if not recent_trials:
                 return False
             recent_best_value = max(recent_trials)
@@ -192,18 +207,26 @@ def optimize_model_parameters(
         sampler=optuna.samplers.TPESampler(seed=opt_seed),
     )
 
-    history_path = Path(self.logs_dir) / "optuna" / f"{model_name}_repeat_{repeat_idx + 1:03d}.jsonl"
+    history_path = (
+        Path(self.logs_dir) / "optuna" / f"{model_name}_repeat_{repeat_idx + 1:03d}.jsonl"
+    )
     history_warning = False
 
     def record_trial(study, trial):
         nonlocal history_warning
         record = {
-            "run_id": self.paths.run_id, "model": model_name, "repeat": repeat_idx + 1,
-            "trial": trial.number + 1, "optuna_trial_number": trial.number,
-            "state": trial.state.name, "params": trial.params,
-            "metrics": {"cv_mean": trial.user_attrs.get("cv_mean"),
-                        "cv_std": trial.user_attrs.get("cv_std"),
-                        "robust_objective": trial.value},
+            "run_id": self.paths.run_id,
+            "model": model_name,
+            "repeat": repeat_idx + 1,
+            "trial": trial.number + 1,
+            "optuna_trial_number": trial.number,
+            "state": trial.state.name,
+            "params": trial.params,
+            "metrics": {
+                "cv_mean": trial.user_attrs.get("cv_mean"),
+                "cv_std": trial.user_attrs.get("cv_std"),
+                "robust_objective": trial.value,
+            },
             "elapsed_s": trial.duration.total_seconds() if trial.duration else None,
         }
         publish("trial_history", "record", **record)
@@ -230,7 +253,9 @@ def optimize_model_parameters(
     )
 
     if not any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
-        raise ValueError("No valid complete CV trials; undefined Pearson/failed folds cannot be imputed")
+        raise ValueError(
+            "No valid complete CV trials; undefined Pearson/failed folds cannot be imputed"
+        )
     best_params = study.best_params
     log.info(f"Best parameters: {best_params}")
     if self.task_type == "classification":
