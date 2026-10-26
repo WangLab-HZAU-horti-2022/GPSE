@@ -8,7 +8,13 @@ Runs all or specified models and optionally performs Stacking ensemble.
 """
 
 from gpse.utils.training_monitor import (
-    observed, monitored_run, publish, configure_worker, get_client_config, init_client, observation,
+    observed,
+    monitored_run,
+    publish,
+    configure_worker,
+    get_client_config,
+    init_client,
+    observation,
 )
 import os
 import json
@@ -31,6 +37,7 @@ from gpse.train._results import write_result_bundle
 from gpse.train._cv_statistics import export_cv, runtime_provenance, validate_shared_splits
 from gpse.train.topsis import TOPSISEvaluator
 from gpse.utils.log_utils import shorten_path
+from gpse.train._task_store import checkpoint_run
 
 
 def _cancel_model_worker(signum, frame):
@@ -47,15 +54,20 @@ def _init_model_worker_threads(n_threads: int, monitor_config=None) -> None:
 
 
 def _run_model_task(predictor, model_name, X, y, cv_pheno_data, use_same_test_set, test_indices):
-    configure_worker(get_client_config(),
-                     predictor.logs_dir / "workers" / f"{model_name}.log")
+    configure_worker(get_client_config(), predictor.logs_dir / "workers" / f"{model_name}.log")
     return predictor.run_model_multiple_repeats(
         model_name, X, y, cv_pheno_data, use_same_test_set, test_indices
     )
 
 
 def _save_split_manifest(
-    paths, X, train_indices, test_indices, task_type, random_seed, phenotype_scaler=None,
+    paths,
+    X,
+    train_indices,
+    test_indices,
+    task_type,
+    random_seed,
+    phenotype_scaler=None,
     split_metadata=None,
 ):
     manifest = {
@@ -93,8 +105,12 @@ def _write_holdout_reports(paths, all_model_results, task_type, split_strategy):
         if task_type == "classification":
             row.update(
                 {
-                    "accuracy": result.get("avg_ensemble_accuracy", result.get("avg_test_accuracy", 0.0)),
-                    "accuracy_std": result.get("std_ensemble_accuracy", result.get("std_test_accuracy", 0.0)),
+                    "accuracy": result.get(
+                        "avg_ensemble_accuracy", result.get("avg_test_accuracy", 0.0)
+                    ),
+                    "accuracy_std": result.get(
+                        "std_ensemble_accuracy", result.get("std_test_accuracy", 0.0)
+                    ),
                     "f1": result.get("avg_test_f1", 0.0),
                     "auc": result.get("avg_test_auc", 0.0),
                     "pr_auc": result.get("avg_ensemble_pr_auc", result.get("avg_test_pr_auc", 0.0)),
@@ -103,9 +119,15 @@ def _write_holdout_reports(paths, all_model_results, task_type, split_strategy):
         else:
             row.update(
                 {
-                    "pearson": result.get("avg_ensemble_pearson", result.get("avg_test_pearson", 0.0)),
-                    "pearson_std": result.get("std_ensemble_pearson", result.get("std_test_pearson", 0.0)),
-                    "spearman": result.get("avg_ensemble_spearman", result.get("avg_test_spearman", 0.0)),
+                    "pearson": result.get(
+                        "avg_ensemble_pearson", result.get("avg_test_pearson", 0.0)
+                    ),
+                    "pearson_std": result.get(
+                        "std_ensemble_pearson", result.get("std_test_pearson", 0.0)
+                    ),
+                    "spearman": result.get(
+                        "avg_ensemble_spearman", result.get("avg_test_spearman", 0.0)
+                    ),
                     "mse": result.get("avg_ensemble_mse", result.get("avg_test_mse", 0.0)),
                     "rmse": result.get("avg_ensemble_rmse", 0.0),
                     "mae": result.get("avg_ensemble_mae", 0.0),
@@ -154,25 +176,20 @@ def _write_topsis_final_predictions(paths, all_model_results, X, task_type):
         paths.model_dir(best_model) / f"repeat_{repeat_idx + 1}" / "all_predictions.json"
     )
     if not predictions_file.exists():
-        main_logger.warning(
-            f"Missing {predictions_file}; skipping TOPSIS-based final predictions"
-        )
+        main_logger.warning(f"Missing {predictions_file}; skipping TOPSIS-based final predictions")
         return None
     with open(predictions_file, encoding="utf-8") as handle:
         all_predictions = json.load(handle)
     test_entries = all_predictions.get("test") or []
     if not test_entries:
         main_logger.warning(
-            f"No test predictions in {predictions_file}; "
-            "skipping TOPSIS-based final predictions"
+            f"No test predictions in {predictions_file}; " "skipping TOPSIS-based final predictions"
         )
         return None
 
     indices = np.asarray(test_entries[0]["indices"], dtype=int)
     observed = np.asarray(test_entries[0]["true_values"], dtype=float)
-    predicted_stack = np.asarray(
-        [entry["predicted_values"] for entry in test_entries], dtype=float
-    )
+    predicted_stack = np.asarray([entry["predicted_values"] for entry in test_entries], dtype=float)
     if task_type == "classification":
         predicted = pd.DataFrame(predicted_stack).mode().iloc[0].to_numpy()
     else:
@@ -204,6 +221,7 @@ def _write_topsis_final_predictions(paths, all_model_results, X, task_type):
 
 
 @monitored_run
+@checkpoint_run
 def run_all_models(
     self,
     geno_file: str,
@@ -243,39 +261,106 @@ def run_all_models(
         Dictionary containing all model results.
     """
     # Refuse reuse before loading data can write schemas, reports, or split manifests.
-    if (self.results_dir / "cv_run_manifest.json").exists() or any(
-            self.results_dir.rglob("repeat_results.json")) or any(
-            self.results_dir.rglob("model_comparison*.csv")):
-        raise FileExistsError("Results already exist; use a new results directory or offline reaggregation")
+    if (
+        (self.results_dir / "cv_run_manifest.json").exists()
+        or any(self.results_dir.rglob("repeat_results.json"))
+        or any(self.results_dir.rglob("model_comparison*.csv"))
+    ):
+        raise FileExistsError(
+            "Results already exist; use a new results directory or offline reaggregation"
+        )
     if getattr(self, "topsis_config", None):
         criteria, types, weights = self.get_topsis_configuration()
         expected = ["cv_mean", getattr(self, "cv_stability_metric", "cv_std_repeat")]
         if criteria != expected or types != ["max", "min"] or weights != "0.8,0.2":
-            raise ValueError("TOPSIS config must use aggregated CV criteria and fixed weights 0.8,0.2")
-    self._cv_run_config = {"geno_file": str(geno_file), "pheno_file": str(pheno_file),
-                           "target_trait": target_trait,
-                           "models": models if models is not None else self.available_models,
-                           "use_stacking": use_stacking, "top_n_models": top_n_models,
-                           "stacking_cv_folds": cv_folds, "fixed_holdout": use_same_test_set}
+            raise ValueError(
+                "TOPSIS config must use aggregated CV criteria and fixed weights 0.8,0.2"
+            )
+    self._cv_run_config = {
+        "geno_file": str(geno_file),
+        "pheno_file": str(pheno_file),
+        "target_trait": target_trait,
+        "models": models if models is not None else self.available_models,
+        "use_stacking": use_stacking,
+        "top_n_models": top_n_models,
+        "stacking_cv_folds": cv_folds,
+        "fixed_holdout": use_same_test_set,
+    }
+    if not use_same_test_set:
+        raise ValueError("Training-only selection requires a fixed holdout across repeats")
+    X, y, pheno_data = self.load_data(geno_file, pheno_file, target_trait)
+    if (getattr(self, "execution_config", None) is None
+            and getattr(self, "scheduler", "legacy") != "legacy"):
+        from gpse.train._execution_config import ExecutionConfig
+
+        self.execution_config = ExecutionConfig.automatic(
+            self, models or self.available_models, X, y
+        )
+        self.n_threads = 1  # Bootstrap only; generated profiles own per-fit limits.
+        self.execution_config.write_plan(self.paths.run_dir / "resource_plan.json")
+        main_logger.info(
+            f"{self.execution_config.scheduler}: automatic resource plan saved; "
+            f"CPU={self.execution_config.cpu_budget}, workers={self.execution_config.worker_slots}"
+        )
     provenance = runtime_provenance(self)
     with (self.results_dir / "cv_run_manifest.json").open("x", encoding="utf-8") as handle:
         json.dump(provenance, handle, indent=2)
     if not use_same_test_set:
         raise ValueError("Training-only selection requires a fixed holdout across repeats")
-    X, y, pheno_data = self.load_data(geno_file, pheno_file, target_trait)
+    execution_config = getattr(self, "execution_config", None)
+    resource_manager = None
+    if execution_config is not None:
+        execution_config.validate_environment(X, y)
+        resource_manager = execution_config.make_manager(models or self.available_models)
+        from gpse.train._task_store import TaskStore, file_hash
+        from gpse.train._cv_statistics import digest
+        from importlib.metadata import version
+        import platform
+
+        self._checkpoint_fingerprint = digest(
+            {
+                "provenance": provenance,
+                "genotype": file_hash(geno_file),
+                "phenotype": file_hash(pheno_file),
+                "python": platform.python_version(),
+                "implementation": platform.python_implementation(),
+                "architecture": platform.machine(),
+                "versions": {
+                    name: version(name)
+                    for name in (
+                        "numpy",
+                        "scipy",
+                        "pandas",
+                        "scikit-learn",
+                        "optuna",
+                        "joblib",
+                        "threadpoolctl",
+                        "xgboost",
+                        "lightgbm",
+                        "catboost",
+                    )
+                },
+            }
+        )
+        TaskStore(self.paths.run_dir, self._checkpoint_fingerprint, self.resume_from)
 
     fixed_test_indices = None
     if use_same_test_set:
-        train_indices, fixed_test_indices, split_metadata = create_holdout_indices(
-            y,
-            self.test_size,
-            self.random_seed,
-            self.task_type,
-            X=X,
-            split_strategy=self.split_strategy,
-            structure_clusters=self.structure_clusters,
-            return_metadata=True,
-        )
+        from gpse.train._execution_config import coordinator_stage
+
+        with coordinator_stage(
+            resource_manager, execution_config, self.paths.run_dir, "holdout_split"
+        ):
+            train_indices, fixed_test_indices, split_metadata = create_holdout_indices(
+                y,
+                self.test_size,
+                self.random_seed,
+                self.task_type,
+                X=X,
+                split_strategy=self.split_strategy,
+                structure_clusters=self.structure_clusters,
+                return_metadata=True,
+            )
         phenotype_scaler = None
         if self.task_type == "regression" and self.standardize_phenotype:
             _, phenotype_scaler = self._standardize_phenotype(y.iloc[train_indices])
@@ -289,7 +374,9 @@ def run_all_models(
             phenotype_scaler,
             split_metadata,
         )
-        main_logger.info("Saved fixed hold-out split manifest; test data is reserved for final evaluation")
+        main_logger.info(
+            "Saved fixed hold-out split manifest; test data is reserved for final evaluation"
+        )
 
     cv_pheno_data = None
     if self.cv_file is not None:
@@ -314,8 +401,15 @@ def run_all_models(
 
     if getattr(self, "cpu_budget", None) is not None:
         from gpse.train._scheduler import run_budgeted_models
+
         all_model_results, model_failures = run_budgeted_models(
-            self, models, X, y, cv_pheno_data, fixed_test_indices
+            self,
+            models,
+            X,
+            y,
+            cv_pheno_data,
+            fixed_test_indices,
+            resource_manager=resource_manager,
         )
     elif model_workers > 1:
         main_logger.info(f"Using {model_workers} parallel model workers")
@@ -350,9 +444,7 @@ def run_all_models(
                     main_logger.error(traceback.format_exc())
     else:
         for i, model_name in enumerate(models, start=1):
-            main_logger.info(
-                f"[{i}/{len(models)}] Starting training for model: {model_name}"
-            )
+            main_logger.info(f"[{i}/{len(models)}] Starting training for model: {model_name}")
             try:
                 model_summary = self.run_model_multiple_repeats(
                     model_name, X, y, cv_pheno_data, use_same_test_set, fixed_test_indices
@@ -367,8 +459,14 @@ def run_all_models(
     main_logger.info("Model performance comparison before ensemble:")
     if model_failures:
         with (self.results_dir / "cv_model_failures.json").open("x") as handle:
-            json.dump({"excluded_models": model_failures,
-                       "policy": "incomplete_or_invalid_models_are_ineligible"}, handle, indent=2)
+            json.dump(
+                {
+                    "excluded_models": model_failures,
+                    "policy": "incomplete_or_invalid_models_are_ineligible",
+                },
+                handle,
+                indent=2,
+            )
     if not all_model_results:
         raise RuntimeError(
             "All models failed to train; see the per-model errors above. "
@@ -384,25 +482,40 @@ def run_all_models(
             if "cv_aggregation" not in result:
                 raise ValueError(f"{name}: missing complete training-CV aggregation")
             aggregates[name] = result["cv_aggregation"]
-            model_repeats[name] = [json.loads(path.read_text()) for path in
-                                  (self.paths.models_dir / name).glob("repeat_*/repeat_results.json")]
+            model_repeats[name] = [
+                json.loads(path.read_text())
+                for path in (self.paths.models_dir / name).glob("repeat_*/repeat_results.json")
+            ]
         validate_shared_splits(model_repeats)
         export_cv(self.paths.selection_dir, model_repeats, aggregates, provenance)
         stability_metric = getattr(self, "cv_stability_metric", "cv_std_repeat")
         ranked = TOPSISEvaluator(main_logger).evaluate(
             self.paths.selection_dir / "model_comparison_cv.csv",
             self.paths.ensure("topsis_full"),
-            criteria=["cv_mean", stability_metric], criteria_types=["max", "min"],
-            manual_weights="0.8,0.2", min_transform="neglog",
+            criteria=["cv_mean", stability_metric],
+            criteria_types=["max", "min"],
+            manual_weights="0.8,0.2",
+            min_transform="neglog",
             simple_output=self.paths.ensure("topsis_simple"),
         )
         if use_stacking:
             selected_models_for_stacking = ranked["Model"].tolist()[:top_n_models]
-            with self.paths.ensure("stacking_selected_models").open("x", encoding="utf-8") as handle:
-                json.dump({"selection_source": "train_only_cv", "accuracy_metric": "cv_mean",
-                           "stability_metric": stability_metric, "weight_method": "manual",
-                           "weights": [0.8, 0.2], "selection_method": "TOPSIS",
-                           "selected_models": selected_models_for_stacking}, handle, indent=2)
+            with self.paths.ensure("stacking_selected_models").open(
+                "x", encoding="utf-8"
+            ) as handle:
+                json.dump(
+                    {
+                        "selection_source": "train_only_cv",
+                        "accuracy_metric": "cv_mean",
+                        "stability_metric": stability_metric,
+                        "weight_method": "manual",
+                        "weights": [0.8, 0.2],
+                        "selection_method": "TOPSIS",
+                        "selected_models": selected_models_for_stacking,
+                    },
+                    handle,
+                    indent=2,
+                )
 
     if use_stacking and len(all_model_results) >= 2:
         try:
@@ -423,7 +536,9 @@ def run_all_models(
                     structure_clusters=self.structure_clusters,
                 )
             else:
-                train_indices = np.setdiff1d(np.arange(len(X)), fixed_test_indices, assume_unique=True)
+                train_indices = np.setdiff1d(
+                    np.arange(len(X)), fixed_test_indices, assume_unique=True
+                )
             X_train, y_train = X.iloc[train_indices], y.iloc[train_indices]
             X_test, y_test = X.iloc[fixed_test_indices], y.iloc[fixed_test_indices]
             if self.task_type == "regression" and self.standardize_phenotype:
@@ -444,6 +559,24 @@ def run_all_models(
                 random_seed=self.random_seed,
                 n_threads=self.n_threads,
                 cpu_budget=getattr(self, "cpu_budget", None),
+                execution_config=execution_config,
+                resource_manager=resource_manager,
+                checkpoint_fingerprint=getattr(self, "_checkpoint_fingerprint", None),
+                resume_from=getattr(self, "resume_from", None),
+                model_import_paths=(
+                    {
+                        name: (
+                            self.model_optimizer
+                            if self.task_type == "regression"
+                            else self.classification_optimizer
+                        )
+                        ._registry.model_configs[name]
+                        .import_path
+                        for name in selected_models
+                    }
+                    if execution_config
+                    else None
+                ),
                 use_default_params=self.use_default_params,
                 task_type=self.task_type,
                 feature_selection_config=self.feature_selection_config,
@@ -481,17 +614,20 @@ def run_all_models(
         except Exception as e:
             main_logger.error(f"Stacking ensemble execution failed: {str(e)}")
             main_logger.error(traceback.format_exc())
+            if execution_config is not None:
+                model_failures["stacking_ensemble"] = str(e)
 
-    _write_holdout_reports(
-        self.paths, all_model_results, self.task_type, self.split_strategy
-    )
-    _write_topsis_final_predictions(
-        self.paths, all_model_results, X, self.task_type
-    )
+    _write_holdout_reports(self.paths, all_model_results, self.task_type, self.split_strategy)
+    _write_topsis_final_predictions(self.paths, all_model_results, X, self.task_type)
     with observation("reports"):
+        reported_results = dict(all_model_results)
+        if execution_config is not None:
+            reported_results.update(
+                {name: {"error": error} for name, error in model_failures.items()}
+            )
         report_paths = write_result_bundle(
             self.results_dir,
-            all_model_results,
+            reported_results,
             task_type=self.task_type,
             target_trait=target_trait,
             split_strategy=self.split_strategy,
@@ -505,12 +641,18 @@ def run_all_models(
             "Result bundle saved: "
             + ", ".join(shorten_path(path) for path in report_paths.values())
         )
-        _finalize_run_outputs(self, use_stacking, target_trait, len(all_model_results))
+        _finalize_run_outputs(
+            self,
+            use_stacking,
+            target_trait,
+            len(all_model_results),
+            run_status="partial" if execution_config and model_failures else "completed",
+        )
     return all_model_results
 
 
 def _finalize_run_outputs(
-    self, use_stacking: bool, target_trait: str, model_count: int
+    self, use_stacking: bool, target_trait: str, model_count: int, run_status="completed"
 ) -> None:
     """Best-effort v3 metadata: selection summary, manifest, README, index.
 
@@ -537,13 +679,11 @@ def _finalize_run_outputs(
             stacking_status = "skipped_insufficient_models"
         else:
             stacking_status = "failed"
-        selection_status = (
-            "completed" if paths.resolve("topsis_simple") is not None else "unknown"
-        )
+        selection_status = "completed" if paths.resolve("topsis_simple") is not None else "unknown"
         artifacts = collect_artifacts(paths)
         finalize_run_manifest(
             paths,
-            run_status="completed",
+            run_status=run_status,
             selection_status=selection_status,
             stacking_status=stacking_status,
             artifact_index=artifacts,

@@ -37,9 +37,15 @@ def runtime_provenance(predictor):
         k: v
         for k, v in vars(predictor).items()
         if isinstance(v, (str, int, float, bool, type(None)))
-        and k not in {"results_dir", "main_log_filename"}
+        and k not in {"results_dir", "main_log_filename", "resume_from", "automatic_fit_threads"}
+        and not k.startswith("_checkpoint_")
     }
     config["run"] = getattr(predictor, "_cv_run_config", {})
+    execution = getattr(predictor, "execution_config", None)
+    if execution is not None:
+        from dataclasses import asdict
+
+        config["execution"] = asdict(execution)
     for name in ("feature_selection_config", "genotype_imputation_config"):
         config[name] = getattr(predictor, name).as_dict()
     config["config_files"] = {

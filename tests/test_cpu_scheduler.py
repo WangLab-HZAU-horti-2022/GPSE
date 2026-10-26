@@ -46,7 +46,11 @@ def test_auto_budget_and_explicit_caps(monkeypatch):
     assert (args.n_jobs, args.max_workers, args.repeat_workers) == (1, 1, 1)
     args = _build_parser().parse_args(["--task_type", "regression", "--max_workers", "2"])
     _apply_threads_budget(args, log=False)
-    assert args.cpu_budget is None  # Explicit manual mode is preserved.
+    assert args.cpu_budget == 12  # Explicit caps retain default elastic admission.
+    args = _build_parser().parse_args(["--task_type", "regression", "--max_workers", "2",
+                                      "--scheduler", "legacy"])
+    _apply_threads_budget(args, log=False)
+    assert args.cpu_budget is None  # Explicit legacy manual mode is preserved.
     assert resolve_cpu_budget("-1") == 12
     with pytest.raises(ValueError):
         resolve_cpu_budget(13)
@@ -65,7 +69,7 @@ def test_cgroup_quota_limits_affinity(monkeypatch):
     monkeypatch.setattr(Path, "read_text", read)
     monkeypatch.setattr(os, "cpu_count", lambda: 64)
     monkeypatch.setattr(os, "sched_getaffinity", lambda pid: set(range(8)))
-    assert get_available_cpu_cores() == 2
+    assert get_available_cpu_cores() == 1  # Fractional quotas use conservative integer admission.
 
 
 @pytest.fixture
@@ -437,6 +441,8 @@ def test_spawn_bootstrap_obeys_resolved_native_threads(data, tmp_path):
             "4",
             "--n_jobs",
             "2",
+            "--scheduler",
+            "legacy",
             "--use_default_params",
             "--no-use_stacking",
         ),
@@ -471,8 +477,8 @@ def slow_stack_job(*args):
     Path(sys.argv[3],str(os.getpid())).write_text(str(os.getpid()))
     time.sleep(300)
 
+stacking._stack_job=slow_stack_job
 if __name__=='__main__':
-    stacking._stack_job=slow_stack_job
     from gpse.train.cli import main
     sys.exit(main(['--geno_file',sys.argv[1],'--pheno_file',sys.argv[2],
                    '--results_dir',sys.argv[4],'--target_trait','yield','--task_type','regression',

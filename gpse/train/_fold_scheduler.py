@@ -60,6 +60,23 @@ def execute_fold(kind, model, repeat, payload, worker):
             return predictor.generate_cv_folds_from_file(
                 train_X, train_y, worker[3], repeat, logger
             )
+    if kind == "repeat_ensemble":
+        with observation("repeat_ensemble", model=model, repeat=repeat + 1):
+            return predictor._compute_ensemble_predictions(
+                model,
+                payload["params"],
+                payload["folds"],
+                X,
+                train_X,
+                train_y,
+                test_X,
+                test_y,
+                payload["repeat_dir"],
+                logger,
+                y_test_original=payload["y_test_original"],
+                phenotype_scaler=payload["phenotype_scaler"],
+                fold_predictions=payload["predictions"],
+            )
     fold, train, val, params, extra = payload
     if kind == "optimization_fold":
         np.random.seed(generate_repeat_seed(predictor.random_seed, repeat))
@@ -250,6 +267,21 @@ class _RepeatExecutor:
                 "training_fold", model, repeat, params, folds, repeat_dir, self.fold_limit
             )
 
+        def ensemble(params, folds, predictions, repeat_dir, scaler, y_test_original):
+            return self.dispatcher.submit(
+                "repeat_ensemble",
+                model,
+                repeat,
+                {
+                    "params": params,
+                    "folds": folds,
+                    "predictions": predictions,
+                    "repeat_dir": repeat_dir,
+                    "phenotype_scaler": scaler,
+                    "y_test_original": y_test_original,
+                },
+            ).result()
+
         return predictor.train_and_evaluate_model_for_repeat(
             model,
             self.X,
@@ -262,6 +294,7 @@ class _RepeatExecutor:
             optimization_fold_runner=optimization,
             data_partition=self.partition,
             cv_folds=folds,
+            ensemble_runner=ensemble if getattr(predictor, "execution_config", None) else None,
         )
 
 
@@ -278,6 +311,8 @@ def fold_training_pool(
     controller_limit,
     fold_limit,
     warmup_gate,
+    models=None,
+    resource_manager=None,
 ):
     """Stop compute workers before joining controllers blocked on their futures."""
     controllers = None
@@ -293,13 +328,59 @@ def fold_training_pool(
                 warmup_gate.set()
             for future in warmup:
                 future.result()
-            dispatcher = _Dispatcher(
-                pool,
-                execute,
-                capacity,
-                cost_fn=getattr(predictor, "get_effective_threads", None),
-                token_budget=getattr(predictor, "cpu_budget", None),
-            )
+            config = getattr(predictor, "execution_config", None)
+            if config is None:
+                dispatcher = _Dispatcher(
+                    pool,
+                    execute,
+                    capacity,
+                    cost_fn=getattr(predictor, "get_effective_threads", None),
+                    token_budget=getattr(predictor, "cpu_budget", None),
+                )
+            else:
+                from gpse.train._elastic_dispatcher import ElasticDispatcher
+                from gpse.train._resources import ResourceRequest
+                from gpse.train._scheduler import _execute_leased
+
+                manager = (
+                    resource_manager
+                    if resource_manager is not None
+                    else config.make_manager(models)
+                )
+                task_store = None
+                if getattr(predictor, "_checkpoint_fingerprint", None):
+                    from gpse.train._task_store import TaskStore
+
+                    task_store = TaskStore(
+                        predictor.paths.run_dir,
+                        predictor._checkpoint_fingerprint,
+                        getattr(predictor, "resume_from", None),
+                    )
+                dispatcher = ElasticDispatcher(
+                    pool,
+                    _execute_leased,
+                    manager,
+                    {
+                        model: ResourceRequest(
+                            config.resource_profiles[model].preferred_cpu_per_fit,
+                            config.resource_profiles[model].memory_bytes,
+                        )
+                        for model in models
+                    },
+                    {
+                        model: (
+                            config.resource_profiles[model].weight
+                            if config.scheduler == "elastic_v1"
+                            else 1
+                        )
+                        for model in models
+                    },
+                    str(predictor.paths.run_dir),
+                    config.aging_seconds,
+                    on_event=publish,
+                    completion_driven=config.scheduler == "elastic_v1",
+                    task_store=task_store,
+                )
             controllers = ThreadPoolExecutor(
                 max_workers=controller_limit, thread_name_prefix="gpse-repeat"
             )
@@ -314,6 +395,9 @@ def fold_training_pool(
     finally:
         if dispatcher is not None:
             dispatcher.stop()
+            if hasattr(dispatcher, "confirm_pool_stopped"):
+                dispatcher.confirm_pool_stopped()
+                dispatcher.manager.next_generation()
         if controllers is not None:
             with uninterrupted_cleanup():
                 controllers.shutdown(wait=True, cancel_futures=True)

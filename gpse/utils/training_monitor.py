@@ -625,7 +625,8 @@ class ConsoleRenderer:
                 footer += f"/{self.pool['worker_limit']}"
             footer += f" · CPU budget {self.pool['cpu_budget']}"
             threads = self.pool["threads_per_worker"]
-            footer += f" · {threads} {'thread' if threads == 1 else 'threads'}/fit"
+            footer += (" · threads per resource profile" if threads is None else
+                       f" · {threads} {'thread' if threads == 1 else 'threads'}/fit")
         if tiny:
             footer = footer.replace("Active fits", "Fits").replace("CPU budget", "CPU")
             footer = footer.replace("/fit", "")
@@ -674,8 +675,8 @@ class ConsoleRenderer:
         self.phase = phases.get(stage, self.phase)
         if stage == "scheduler" and status == "configured":
             fields = ("cpu_budget", "worker_limit", "threads_per_worker")
-            if all(event.get(field) is not None for field in fields):
-                self.pool = {field: event[field] for field in fields}
+            if all(event.get(field) is not None for field in fields[:2]):
+                self.pool = {field: event.get(field) for field in fields}
         if stage == "run":
             self.phase = "Initializing" if status == "started" else status.title()
             if status in {"interrupted", "failed"}:

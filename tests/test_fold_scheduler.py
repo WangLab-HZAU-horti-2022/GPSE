@@ -446,12 +446,13 @@ def test_one_repeat_controller_parallelizes_folds_without_changing_results(tmp_p
 
 
 @pytest.mark.parametrize("stage", ["warmup", "optimization_fold", "training_fold"])
-def test_interrupt_cleans_compute_pool_and_blocked_controllers(tmp_path, stage):
+@pytest.mark.parametrize("elastic", [False, True])
+def test_interrupt_cleans_compute_pool_and_blocked_controllers(tmp_path, stage, elastic):
     # Block real spawned workers independently of event logging. In particular,
     # interrupt the initial warmup and the first frozen search, before any repeat
     # has completed and while controller threads may be waiting for pool slots.
     script = tmp_path / "slow_fold.py"
-    script.write_text("""import os, sys, time
+    script.write_text("""import os, sys, time, json
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -472,11 +473,20 @@ if __name__ == "__main__":
     X = pd.DataFrame(rng.normal(size=(80, 5)), index=[f"s{i}" for i in range(80)])
     X.to_csv(root / "X.csv", index_label="ID")
     (X[0] + rng.normal(size=80)*.1).to_frame("yield").to_csv(root / "y.csv", index_label="ID")
+    flags = []
+    if os.environ["ELASTIC"] == "1":
+        config = {"cpu_budget":4, "worker_slots":3, "memory_budget_bytes":4*2**30,
+                  "fixed_memory_bytes":256*2**20, "worker_memory_bytes":256*2**20,
+                  "resource_profiles":{"kernelridge_reg":{"preferred_cpu_per_fit":1,
+                                         "memory_bytes":128*2**20,"max_active_fits":3}}}
+        (root / "execution.json").write_text(json.dumps(config))
+        flags = ["--execution_config", str(root / "execution.json")]
     sys.exit(main([
         "--geno_file", str(root / "X.csv"), "--pheno_file", str(root / "y.csv"),
         "--target_trait", "yield", "--task_type", "regression", "--models", "kernelridge_reg",
         "--n_repeats", "4", "--train_folds", "3", "--threads", "4", "--n_jobs", "1",
         "--trials", "2", "--results_dir", str(root / "results"), "--no-use_stacking",
+        *flags,
     ]))
 """)
     markers = tmp_path / "pids"
@@ -492,6 +502,7 @@ if __name__ == "__main__":
             "OMP_NUM_THREADS": "1",
             "BLOCK_STAGE": stage,
             "PID_DIR": str(markers),
+            "ELASTIC": "1" if elastic else "0",
         },
     )
     try:

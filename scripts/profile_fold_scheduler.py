@@ -54,7 +54,7 @@ CASES = {
 }
 
 
-def compare_outputs(before, after):
+def compare_outputs(before, after, tolerance=1e-12, exact_predictions=True):
     maximum = 0.0
 
     def compare(a, b, where):
@@ -62,7 +62,7 @@ def compare_outputs(before, after):
         if isinstance(a, (float, int)) and not isinstance(a, bool):
             if math.isfinite(a) and math.isfinite(b):
                 maximum = max(maximum, abs(a - b))
-                assert math.isclose(a, b, abs_tol=1e-12, rel_tol=1e-12), (where, a, b)
+                assert math.isclose(a, b, abs_tol=tolerance, rel_tol=tolerance), (where, a, b)
             else:
                 assert a == b, (where, a, b)
         elif isinstance(a, dict):
@@ -118,9 +118,11 @@ def compare_outputs(before, after):
             ]:
                 compare(af[key], bf[key], f"{relative}/fold/{key}")
         for name in ["all_predictions.json", "cv_train_only.csv"]:
-            assert (before / relative.parent / name).read_bytes() == (
-                after / relative.parent / name
-            ).read_bytes(), name
+            old, new = [(directory / relative.parent / name) for directory in (before, after)]
+            if name.endswith(".json") and not exact_predictions:
+                compare(json.loads(old.read_text()), json.loads(new.read_text()), str(relative / name))
+            else:
+                assert old.read_bytes() == new.read_bytes(), name
     before_histories = sorted(before.glob("logs/optuna/*.jsonl"))
     assert len(before_histories) == len(list(after.glob("logs/optuna/*.jsonl")))
     for history in before_histories:
@@ -132,7 +134,7 @@ def compare_outputs(before, after):
         for x, y in zip(a, b):
             for key in ["model", "repeat", "trial", "state", "params", "metrics"]:
                 compare(x[key], y[key], f"{history.name}/{key}")
-    return {"passed": True, "max_numeric_absolute_difference": maximum, "tolerance": 1e-12}
+    return {"passed": True, "max_numeric_absolute_difference": maximum, "tolerance": tolerance}
 
 
 def main():

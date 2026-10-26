@@ -8,7 +8,7 @@ import time
 import multiprocessing as mp
 from concurrent.futures import as_completed
 from pathlib import Path
-from threadpoolctl import threadpool_limits
+from gpse.train._thread_plan import training_thread_limits as threadpool_limits
 
 from gpse.utils.parallel import graceful_process_pool
 from gpse.utils.training_monitor import configure_worker, get_client_config, init_client
@@ -40,22 +40,70 @@ from gpse.train._feature_selection import (
 )
 from gpse.train._model_pipeline import build_training_pipeline
 
-
 _STACK_DATA = None
+_STACK_GATE = None
 
 
-def _init_stack_worker(X, y, X_test, n_threads, task_type, log_dir, config):
-    global _STACK_DATA
+def _init_stack_worker(
+    X, y, X_test, n_threads, task_type, log_dir, config, gate=None, checkpoint_run=None
+):
+    global _STACK_DATA, _STACK_GATE
     init_client(config)
     _STACK_DATA = (X, y, X_test, n_threads, task_type)
+    _STACK_GATE = gate
+    if checkpoint_run is not None:
+        from gpse.train._task_store import hold_worker_lock
+
+        hold_worker_lock(checkpoint_run)
     configure_worker(config, Path(log_dir) / f"stacking_{os.getpid()}.log")
 
 
-def _stack_job(pipeline, model_name, fold_idx, train_idx, val_idx, limits=None):
+def _stack_warmup():
+    _STACK_GATE.wait()
+
+
+def _stack_leased_job(kind, model, repeat, payload, lease):
+    from dataclasses import asdict
+    from threadpoolctl import threadpool_info
+    from gpse.train._thread_plan import (
+        apply_estimator_plan,
+        execution_plan,
+        plan_for,
+        leased_worker_observation,
+    )
+    from gpse.utils.training_monitor import publish
+
+    if (lease.key.model, lease.key.stage) != (model, kind):
+        raise ValueError("Stacking task does not match lease")
+    fold, train, val, pipeline, import_path = payload
+    plan = plan_for(model, import_path, lease.request.cpu)
+    pipeline.set_params(model=apply_estimator_plan(pipeline.named_steps["model"], plan))
+    from gpse.train._task_store import task_artifacts
+
+    with execution_plan(plan), leased_worker_observation(lease), task_artifacts(lease):
+        publish(
+            "thread_plan",
+            "started",
+            model=model,
+            lease_id=lease.lease_id,
+            attempt=lease.attempt,
+            worker_generation=lease.generation,
+            thread_plan=asdict(plan),
+            native_pools=threadpool_info(),
+        )
+        result = _stack_job(pipeline, model, fold, train, val)
+        if (Path(lease.key.run) / ".task_store" / "run.json").exists():
+            from gpse.train._task_store import prepare_result
+
+            return prepare_result(lease, result)
+        return result
+
+
+def _stack_job(pipeline, model_name, fold_idx, train_idx, val_idx):
     X, y, X_test, threads, task_type = _STACK_DATA
     stage = "stacking_refit" if fold_idx is None else "stacking_fold"
     with observation(stage, model=model_name, fold=None if fold_idx is None else fold_idx + 1):
-        with threadpool_limits(limits=limits if limits is not None else threads):
+        with threadpool_limits(limits=threads):
             if train_idx is None:
                 pipeline.fit(X, y)
                 target = X_test
@@ -66,7 +114,11 @@ def _stack_job(pipeline, model_name, fold_idx, train_idx, val_idx, limits=None):
             if target is not None:
                 if task_type == "classification" and hasattr(pipeline, "predict_proba"):
                     probabilities = pipeline.predict_proba(target)
-                    prediction = probabilities[:, 1] if probabilities.shape[1] == 2 else probabilities.max(axis=1)
+                    prediction = (
+                        probabilities[:, 1]
+                        if probabilities.shape[1] == 2
+                        else probabilities.max(axis=1)
+                    )
                 else:
                     prediction = pipeline.predict(target)
     return prediction, pipeline if train_idx is None else None
@@ -91,6 +143,11 @@ class StackingEnsemble:
         genotype_imputation_config=None,
         cpu_budget=None,
         thread_resolver: Optional[Callable[[str], int]] = None,
+        execution_config=None,
+        resource_manager=None,
+        model_import_paths=None,
+        checkpoint_fingerprint=None,
+        resume_from=None,
     ):
         self.base_models_dir = base_models_dir
         self._model_factory = model_factory
@@ -101,6 +158,11 @@ class StackingEnsemble:
         self.output_dir = output_dir or os.path.join(base_models_dir, "ensemble_stacking")
         self.n_threads = n_threads
         self.cpu_budget = cpu_budget
+        self.execution_config = execution_config
+        self._resource_manager = resource_manager
+        self.model_import_paths = model_import_paths or {}
+        self.checkpoint_fingerprint = checkpoint_fingerprint
+        self.resume_from = resume_from
         self.use_default_params = use_default_params
         self.task_type = task_type
         self.feature_selection_config = feature_selection_config or FeatureSelectionConfig()
@@ -116,6 +178,11 @@ class StackingEnsemble:
         if self._thread_resolver is not None:
             return self._thread_resolver(model_name)
         return self.n_threads
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop("_resource_manager", None)
+        return state
 
     def _prediction_feature(self, model: Any, X: np.ndarray) -> np.ndarray:
         if self.task_type == "classification" and hasattr(model, "predict_proba"):
@@ -140,8 +207,15 @@ class StackingEnsemble:
         self, X_train: pd.DataFrame, y_train: pd.Series, X_test: Optional[pd.DataFrame] = None
     ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         """Build OOF features; every training row is predicted by an unseen model."""
-        meta_train = np.zeros((len(X_train), len(self.selected_models)))
-        meta_test = np.zeros((len(X_test), len(self.selected_models))) if X_test is not None else None
+        meta_train = np.full((len(X_train), len(self.selected_models)), np.nan)
+        meta_test = (
+            np.full((len(X_test), len(self.selected_models)), np.nan)
+            if X_test is not None
+            else None
+        )
+
+        if self.execution_config is not None:
+            return self._elastic_meta_features(X_train, y_train, X_test, meta_train, meta_test)
 
         if self.cpu_budget is not None:
             return self._parallel_meta_features(X_train, y_train, X_test, meta_train, meta_test)
@@ -184,27 +258,43 @@ class StackingEnsemble:
     def _parallel_meta_features(self, X_train, y_train, X_test, meta_train, meta_test):
         count = len(self.selected_models) * (self.cv_folds + 1)
         cap = max(1, min(count, self.cpu_budget // self.n_threads))
-        with graceful_process_pool(max_workers=cap, mp_context=mp.get_context("spawn"),
-                                   initializer=_init_stack_worker,
-                                   initargs=(X_train, y_train, X_test, self.n_threads, self.task_type,
-                                             Path(self.output_dir).parents[1] / "logs" / "workers",
-                                             get_client_config()), logger=logger,
-                                   native_threads=self.n_threads) as pool:
+        with graceful_process_pool(
+            max_workers=cap,
+            mp_context=mp.get_context("spawn"),
+            initializer=_init_stack_worker,
+            initargs=(
+                X_train,
+                y_train,
+                X_test,
+                self.n_threads,
+                self.task_type,
+                Path(self.output_dir).parents[1] / "logs" / "workers",
+                get_client_config(),
+            ),
+            logger=logger,
+            native_threads=self.n_threads,
+        ) as pool:
             futures = {}
             for column, name in enumerate(self.selected_models):
                 splits = list(self._splitter(X_train, y_train))
                 for fold_idx, (train, val) in enumerate(splits):
-                    pipeline = build_training_pipeline(self._model_factory(name), task_type=self.task_type,
-                                                       model_name=name, feature_selection_config=self.feature_selection_config,
-                                                       genotype_imputation_config=self.genotype_imputation_config)
-                    future = pool.submit(_stack_job, pipeline, name, fold_idx, train, val,
-                                         self._effective_threads(name))
+                    pipeline = build_training_pipeline(
+                        self._model_factory(name),
+                        task_type=self.task_type,
+                        model_name=name,
+                        feature_selection_config=self.feature_selection_config,
+                        genotype_imputation_config=self.genotype_imputation_config,
+                    )
+                    future = pool.submit(_stack_job, pipeline, name, fold_idx, train, val)
                     futures[future] = (column, name, val)
-                pipeline = build_training_pipeline(self._model_factory(name), task_type=self.task_type,
-                                                   model_name=name, feature_selection_config=self.feature_selection_config,
-                                                   genotype_imputation_config=self.genotype_imputation_config)
-                future = pool.submit(_stack_job, pipeline, name, None, None, None,
-                                     self._effective_threads(name))
+                pipeline = build_training_pipeline(
+                    self._model_factory(name),
+                    task_type=self.task_type,
+                    model_name=name,
+                    feature_selection_config=self.feature_selection_config,
+                    genotype_imputation_config=self.genotype_imputation_config,
+                )
+                future = pool.submit(_stack_job, pipeline, name, None, None, None)
                 futures[future] = (column, name, None)
             for future in as_completed(futures):
                 column, name, val = futures[future]
@@ -216,6 +306,134 @@ class StackingEnsemble:
                 else:
                     meta_train[val, column] = prediction
         return meta_train, meta_test
+
+    def _elastic_meta_features(self, X_train, y_train, X_test, meta_train, meta_test):
+        from gpse.train._elastic_dispatcher import ElasticDispatcher
+        from gpse.train._resources import ResourceRequest
+        from gpse.utils.training_monitor import publish
+
+        config = self.execution_config
+        manager = self._resource_manager
+        if manager is None:
+            raise ValueError("Elastic stacking requires the run resource manager")
+        gate = mp.get_context("spawn").Event()
+        dispatcher = None
+        coverage = np.zeros(meta_train.shape, dtype=int)
+        task_store = None
+        if self.checkpoint_fingerprint:
+            from gpse.train._task_store import TaskStore
+
+            task_store = TaskStore(
+                Path(self.output_dir).parents[1], self.checkpoint_fingerprint, self.resume_from
+            )
+        try:
+            with graceful_process_pool(
+                max_workers=config.worker_slots,
+                mp_context=mp.get_context("spawn"),
+                initializer=_init_stack_worker,
+                initargs=(
+                    X_train,
+                    y_train,
+                    X_test,
+                    1,
+                    self.task_type,
+                    Path(self.output_dir).parents[1] / "logs" / "workers",
+                    get_client_config(),
+                    gate,
+                    Path(self.output_dir).parents[1] if task_store else None,
+                ),
+                logger=logger,
+                native_threads=1,
+            ) as pool:
+                try:
+                    warmup = [pool.submit(_stack_warmup) for _ in range(config.worker_slots)]
+                finally:
+                    gate.set()
+                for future in warmup:
+                    future.result()
+                dispatcher = ElasticDispatcher(
+                    pool,
+                    _stack_leased_job,
+                    manager,
+                    {
+                        name: ResourceRequest(
+                            config.resource_profiles[name].preferred_cpu_per_fit,
+                            config.resource_profiles[name].memory_bytes,
+                        )
+                        for name in self.selected_models
+                    },
+                    {
+                        name: (
+                            config.resource_profiles[name].weight
+                            if config.scheduler == "elastic_v1"
+                            else 1
+                        )
+                        for name in self.selected_models
+                    },
+                    str(Path(self.output_dir).parents[1]),
+                    config.aging_seconds,
+                    on_event=publish,
+                    task_store=task_store,
+                )
+                try:
+                    futures = {}
+                    for column, name in enumerate(self.selected_models):
+                        for fold, (train, val) in enumerate(self._splitter(X_train, y_train)):
+                            pipeline = self._stack_pipeline(name)
+                            future = dispatcher.submit(
+                                "stacking_fold",
+                                name,
+                                None,
+                                (fold, train, val, pipeline, self.model_import_paths[name]),
+                            )
+                            futures[future] = column, name, val
+                        future = dispatcher.submit(
+                            "stacking_refit",
+                            name,
+                            None,
+                            (
+                                None,
+                                None,
+                                None,
+                                self._stack_pipeline(name),
+                                self.model_import_paths[name],
+                            ),
+                        )
+                        futures[future] = column, name, None
+                    for future in as_completed(futures):
+                        column, name, val = futures[future]
+                        prediction, fitted = future.result()
+                        if val is None:
+                            self.base_models[name] = fitted
+                            if meta_test is not None:
+                                meta_test[:, column] = prediction
+                        else:
+                            if np.any(coverage[val, column]):
+                                raise ValueError("Duplicate stacking OOF sample assignment")
+                            meta_train[val, column] = prediction
+                            coverage[val, column] += 1
+                except BaseException:
+                    dispatcher.stop()
+                    raise
+        finally:
+            if dispatcher is not None:
+                dispatcher.stop()
+                dispatcher.confirm_pool_stopped()
+                manager.next_generation()
+        if not np.all(coverage == 1) or not np.isfinite(meta_train).all():
+            raise ValueError("Incomplete stacking OOF coverage")
+        if meta_test is not None and not np.isfinite(meta_test).all():
+            raise ValueError("Incomplete stacking holdout predictions")
+        return meta_train, meta_test
+
+    def _stack_pipeline(self, name):
+        return build_training_pipeline(
+            self._model_factory(name),
+            task_type=self.task_type,
+            model_name=name,
+            feature_selection_config=self.feature_selection_config,
+            genotype_imputation_config=self.genotype_imputation_config,
+        )
 
     def fit_meta_model(self, meta_train: np.ndarray, y_train: pd.Series) -> None:
         if self.task_type == "classification":
@@ -236,9 +454,7 @@ class StackingEnsemble:
         meta_features = np.zeros((len(X), len(self.selected_models)))
         for column, model_name in enumerate(self.selected_models):
             model = self.base_models[model_name]
-            meta_features[:, column] = self._prediction_feature(
-                model, X
-            )
+            meta_features[:, column] = self._prediction_feature(model, X)
         predictions = self.meta_model.predict(meta_features)
         probabilities = (
             self.meta_model.predict_proba(meta_features)
@@ -262,24 +478,74 @@ class StackingEnsemble:
         self.meta_features_cols = self.selected_models.copy()
         start_time = time.time()
         meta_train, meta_test = self.create_meta_features(X_train, y_train, X_test)
-        self.fit_meta_model(meta_train, y_train)
+        if not np.isfinite(meta_train).all() or (
+            meta_test is not None and not np.isfinite(meta_test).all()
+        ):
+            raise ValueError("Stacking requires complete finite OOF and holdout features")
+        from gpse.train._execution_config import coordinator_stage
 
-        results: Dict[str, Any] = {
-            "selected_models": self.selected_models,
-            "train_metrics": self.calculate_metrics(y_train, self.meta_model.predict(meta_train), self._meta_probabilities(meta_train)),
-            "training_time": time.time() - start_time,
-        }
-        if X_test is not None and y_test is not None and meta_test is not None:
-            results["test_metrics"] = self.calculate_metrics(
-                y_test, self.meta_model.predict(meta_test), self._meta_probabilities(meta_test)
-            )
+        task_store = None
+        if self.checkpoint_fingerprint:
+            from dataclasses import asdict
+            from gpse.train._task_store import TaskStore, task_signature
+            from gpse.train._resources import TaskKey
+            from gpse.utils.training_monitor import publish
 
+            run_dir = Path(self.output_dir).parents[1]
+            task_store = TaskStore(run_dir, self.checkpoint_fingerprint, self.resume_from)
+            key = TaskKey(str(run_dir), "__meta__", None, None, None, "stacking_meta")
+            signature = task_signature("stacking_meta", (meta_train, y_train, meta_test, y_test))
+            restored, cached = task_store.restore(key, signature)
+            if restored:
+                self.meta_model, results = cached
+                publish(
+                    "resources", "task_restored", task_key=asdict(key), source="verified_checkpoint"
+                )
+                return results
+
+        with coordinator_stage(
+            getattr(self, "_resource_manager", None),
+            self.execution_config,
+            Path(self.output_dir).parents[1],
+            "stacking_meta",
+            "__meta__",
+        ) as lease:
+            self.fit_meta_model(meta_train, y_train)
+
+            results: Dict[str, Any] = {
+                "selected_models": self.selected_models,
+                "train_metrics": self.calculate_metrics(
+                    y_train,
+                    self.meta_model.predict(meta_train),
+                    self._meta_probabilities(meta_train),
+                ),
+                "training_time": time.time() - start_time,
+            }
+            if X_test is not None and y_test is not None and meta_test is not None:
+                results["test_metrics"] = self.calculate_metrics(
+                    y_test, self.meta_model.predict(meta_test), self._meta_probabilities(meta_test)
+                )
+            if task_store is not None:
+                from gpse.train._task_store import prepare_result, stage_directory
+
+                destination = stage_directory(lease) / "ensemble"
+                destination.mkdir(parents=True, exist_ok=False)
+                self._save_stacking_files(results, destination)
+                receipt = prepare_result(lease, (self.meta_model, results))
+                task_store.commit(lease, receipt, signature, self._resource_manager)
+                return results
+
+        self._save_stacking_files(results, self.output_dir)
+        return results
+
+    def _save_stacking_files(self, results, directory):
         factory = self._model_factory
         self._model_factory = None
-        joblib.dump(self, os.path.join(self.output_dir, "stacking_ensemble_model.pkl"))
-        self._model_factory = factory
-        joblib.dump(results, os.path.join(self.output_dir, "stacking_results.pkl"))
-        return results
+        try:
+            joblib.dump(self, os.path.join(directory, "stacking_ensemble_model.pkl"))
+        finally:
+            self._model_factory = factory
+        joblib.dump(results, os.path.join(directory, "stacking_results.pkl"))
 
     def _meta_probabilities(self, meta_features: np.ndarray) -> Optional[np.ndarray]:
         if self.task_type == "classification" and hasattr(self.meta_model, "predict_proba"):
@@ -292,7 +558,9 @@ class StackingEnsemble:
         if self.task_type == "classification":
             metrics = {
                 "accuracy": float(accuracy_score(y_true, y_pred)),
-                "precision": float(precision_score(y_true, y_pred, average="weighted", zero_division=0)),
+                "precision": float(
+                    precision_score(y_true, y_pred, average="weighted", zero_division=0)
+                ),
                 "recall": float(recall_score(y_true, y_pred, average="weighted", zero_division=0)),
                 "f1": float(f1_score(y_true, y_pred, average="weighted", zero_division=0)),
             }
@@ -311,4 +579,5 @@ class StackingEnsemble:
             return metrics
 
         from gpse.utils.genomic_utils import calculate_metrics
+
         return calculate_metrics(y_true, y_pred)

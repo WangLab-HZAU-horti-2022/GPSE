@@ -21,7 +21,7 @@ from loguru import logger as main_logger
 from gpse.config.constants import ModelConstants
 from gpse.utils.configuration import load_topsis_config
 from gpse.utils.genomic_utils import create_representative_model_directory
-from threadpoolctl import threadpool_limits
+from gpse.train._thread_plan import training_thread_limits as threadpool_limits
 from gpse.train._feature_selection import (
     make_model_artifact,
 )
@@ -209,6 +209,8 @@ def _save_representative_model(
     except Exception as e:
         main_logger.error(f"Saving representative model failed: {str(e)}")
         main_logger.error(traceback.format_exc())
+        if getattr(self, "execution_config", None) is not None:
+            raise
         return None
 
 

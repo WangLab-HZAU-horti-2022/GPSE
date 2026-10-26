@@ -198,6 +198,18 @@ def _build_parser(
 
     performance_group = parser.add_argument_group("performance arguments")
     performance_group.add_argument(
+        "--scheduler", choices=("elastic_v1", "thread_plan", "legacy"), default=None,
+        help="Compute scheduler (default: elastic_v1; an execution_config may select thread_plan); use legacy to opt out",
+    )
+    performance_group.add_argument(
+        "--resume_from", default=None,
+        help="Recover verified fit checkpoints from a stopped elastic run into a fresh results directory",
+    )
+    performance_group.add_argument(
+        "--execution_config", default=None,
+        help="Optional YAML resource plan; omitted plans are generated automatically for elastic_v1",
+    )
+    performance_group.add_argument(
         "--n_jobs",
         action=_ParallelOption,
         type=int,

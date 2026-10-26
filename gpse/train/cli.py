@@ -18,9 +18,17 @@ import traceback
 _bootstrap_parser = argparse.ArgumentParser(add_help=False)
 _bootstrap_parser.add_argument("--n_jobs", type=int, default=1)
 _bootstrap_args, _ = _bootstrap_parser.parse_known_args()
-for _variable in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
-                  "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS", "BLIS_NUM_THREADS"):
-    os.environ[_variable] = os.environ.get("GPSE_NATIVE_THREADS", str(max(1, _bootstrap_args.n_jobs)))
+for _variable in (
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+    "BLIS_NUM_THREADS",
+):
+    os.environ[_variable] = os.environ.get(
+        "GPSE_NATIVE_THREADS", str(max(1, _bootstrap_args.n_jobs))
+    )
 del _bootstrap_parser, _bootstrap_args, _variable
 
 from gpse.convert.processor import GenomicDataProcessor
@@ -47,9 +55,9 @@ def _short_path(value: object) -> str:
     cwd = os.getcwd()
     home = os.path.expanduser("~")
     if text.startswith(cwd):
-        return "..." + text[len(cwd):]
+        return "..." + text[len(cwd) :]
     if text.startswith(home):
-        return "~" + text[len(home):]
+        return "~" + text[len(home) :]
     return text
 
 
@@ -82,15 +90,19 @@ def _resolve_model_count(args: argparse.Namespace) -> int:
     if args.task_type == "regression":
         from gpse.models.regression_model_optimizer import RegressionModelOptimizer
 
-        return len(RegressionModelOptimizer(
-            random_seed=42, n_threads=1, model_config_path=model_config
-        ).model_configs)
+        return len(
+            RegressionModelOptimizer(
+                random_seed=42, n_threads=1, model_config_path=model_config
+            ).model_configs
+        )
     # Classification
     from gpse.models.classification_model_optimizer import ClassificationModelOptimizer
 
     return len(
         ClassificationModelOptimizer(
-            random_seed=42, n_threads=1, n_classes=args.n_classes or 2,
+            random_seed=42,
+            n_threads=1,
+            n_classes=args.n_classes or 2,
             model_config_path=model_config,
         ).model_configs
     )
@@ -98,29 +110,71 @@ def _resolve_model_count(args: argparse.Namespace) -> int:
 
 def _apply_threads_budget(args: argparse.Namespace, *, log: bool = True) -> None:
     """One budget for the shared pool; explicit legacy knobs remain respected."""
-    explicit = getattr(args, "_explicit_parallel", set())
+    explicit = set(getattr(args, "_explicit_parallel", set()))
+    execution_path = getattr(args, "execution_config", None)
+    scheduler = getattr(args, "scheduler", None)
+    if scheduler == "legacy" and execution_path:
+        raise ValueError("--scheduler legacy conflicts with --execution_config")
+    if getattr(args, "resume_from", None) and scheduler == "legacy":
+        raise ValueError("--resume_from requires elastic_v1 or thread_plan")
+    if getattr(args, "resume_from", None) and not execution_path:
+        from pathlib import Path
+
+        execution_path = str(Path(args.resume_from) / "resource_plan.json")
+        args.execution_config = execution_path
+    if execution_path:
+        from gpse.train._execution_config import ExecutionConfig
+
+        config = ExecutionConfig.load(execution_path)
+        if scheduler is not None and scheduler != config.scheduler:
+            raise ValueError("--scheduler conflicts with execution_config scheduler")
+        if args.threads is not None and resolve_cpu_budget(args.threads) != config.cpu_budget:
+            raise ValueError("--threads conflicts with execution_config cpu_budget")
+        if "n_jobs" in explicit and any(
+            profile.preferred_cpu_per_fit != args.n_jobs
+            for profile in config.resource_profiles.values()
+        ):
+            raise ValueError("--n_jobs conflicts with execution_config per-fit CPU profiles")
+        args.threads = str(config.cpu_budget)
+        # Bootstrap only; lease-derived plans govern all elastic compute tasks.
+        args.n_jobs = 1
+        explicit.add("n_jobs")
     if args.fold_workers is not None and args.fold_workers < 1:
         raise ValueError("--fold_workers must be a positive integer")
     args.cpu_budget = None
-    if args.threads is None and explicit and args.fold_workers in {None, 1}:
+    if scheduler == "legacy" and args.threads is None and explicit and args.fold_workers in {None, 1}:
         return
     budget = resolve_cpu_budget(args.threads)
     count = _resolve_model_count(args)
     folds = min(args.n_splits, args.fold_workers or args.n_splits)
     model_slots = min(count, args.max_workers) if "max_workers" in explicit else count
-    repeats = min(args.n_repeats, args.repeat_workers) if "repeat_workers" in explicit else args.n_repeats
+    repeats = (
+        min(args.n_repeats, args.repeat_workers) if "repeat_workers" in explicit else args.n_repeats
+    )
     if "n_jobs" not in explicit:
         args.n_jobs = max(1, budget // max(1, min(budget, model_slots * repeats * folds)))
     if min(args.n_jobs, args.max_workers, args.repeat_workers) < 1 or args.n_jobs > budget:
-        raise ValueError("Worker counts must be positive and --n_jobs must not exceed the CPU budget")
+        raise ValueError(
+            "Worker counts must be positive and --n_jobs must not exceed the CPU budget"
+        )
     slots = max(1, budget // args.n_jobs)
     if "max_workers" not in explicit:
         args.max_workers = min(count, slots)
     if "repeat_workers" not in explicit:
         args.repeat_workers = min(args.n_repeats, slots)
     args.cpu_budget = budget
-    if log:
-        tasks = min(slots, min(count, args.max_workers) * min(args.n_repeats, args.repeat_workers) * folds)
+    if log and execution_path:
+        main_logger.bind(console_summary=True).info(
+            f"{config.scheduler}: CPU budget={budget}; resource profiles from {execution_path}"
+        )
+    elif log and scheduler != "legacy":
+        main_logger.bind(console_summary=True).info(
+            f"{scheduler or 'elastic_v1'}: CPU budget={budget}; generating a memory-bounded resource plan after loading data"
+        )
+    elif log:
+        tasks = min(
+            slots, min(count, args.max_workers) * min(args.n_repeats, args.repeat_workers) * folds
+        )
         main_logger.bind(console_summary=True).info(
             f"CPU budget={budget}; shared pool ceiling={tasks} training tasks × "
             f"{args.n_jobs} native thread(s). Idle slots are reused across models. "
@@ -203,15 +257,15 @@ def main(
                 return 1
         else:
             if not args.geno_file or not args.pheno_file:
-                main_logger.error("--geno_file and --pheno_file are required in normal training mode")
+                main_logger.error(
+                    "--geno_file and --pheno_file are required in normal training mode"
+                )
                 return 1
             if not args.target_trait:
                 main_logger.error("--target_trait is required for training")
                 return 1
 
-        main_logger.info(
-            f"Stacking ensemble: {'enabled' if args.use_stacking else 'disabled'}"
-        )
+        main_logger.info(f"Stacking ensemble: {'enabled' if args.use_stacking else 'disabled'}")
         _log_config(args)
 
         processed_geno_file = args.geno_file
@@ -240,7 +294,8 @@ def main(
                 "load": args.load_matrix_info,
                 "trait_name": args.target_trait,
                 "standardize_phenotype": False,
-                "threads": args.cpu_budget or (args.n_jobs * args.max_workers * args.repeat_workers),
+                "threads": args.cpu_budget
+                or (args.n_jobs * args.max_workers * args.repeat_workers),
             }
 
             if args.standardize_phenotype:
@@ -280,7 +335,6 @@ def main(
                         processed_geno_file = args.preprocess_prefix + ".csv"
                     processed_pheno_file = args.raw_pheno_file
 
-
             except Exception as e:
                 main_logger.error(f"Error during data preprocessing: {e}")
                 main_logger.error(traceback.format_exc())
@@ -300,9 +354,7 @@ def main(
         # ---- Validate task_type / n_classes (user-specified, no auto-detect) ----
         if args.task_type == "classification":
             if args.n_classes is None:
-                main_logger.error(
-                    "--n_classes is required when --task_type=classification"
-                )
+                main_logger.error("--n_classes is required when --task_type=classification")
                 return 1
             if args.n_classes < 2:
                 main_logger.error("--n_classes must be >= 2 for classification")
@@ -318,6 +370,7 @@ def main(
             if os.path.exists(manifest_path):
                 try:
                     import json
+
                     with open(manifest_path, encoding="utf-8") as manifest_handle:
                         feature_id_mode = json.load(manifest_handle).get("feature_id_mode")
                 except (OSError, ValueError):
@@ -331,6 +384,34 @@ def main(
         training_standardize = args.standardize_phenotype
 
         from gpse.output.paths import create_run
+
+        if args.results_dir:
+            from pathlib import Path
+
+            target = Path(args.results_dir)
+            if (
+                any(
+                    (target / name).exists()
+                    for name in ("run_manifest.json", "cv_run_manifest.json", ".task_store")
+                )
+                or any(target.rglob("repeat_results.json"))
+                or any(target.rglob("model_comparison*.csv"))
+            ):
+                raise ValueError(
+                    "Results already exist; use a new results directory, optionally with --resume_from"
+                )
+        if args.resume_from:
+            from pathlib import Path
+
+            source = Path(args.resume_from).resolve()
+            if args.results_dir:
+                destination = Path(args.results_dir).resolve()
+                if (
+                    source == destination
+                    or source.is_relative_to(destination)
+                    or destination.is_relative_to(source)
+                ):
+                    raise ValueError("Recovery requires a separate new results directory")
 
         output_paths = create_run(results_dir=args.results_dir, trait=args.target_trait)
         try:
@@ -357,6 +438,10 @@ def main(
             max_parallel_jobs=args.max_workers,
             repeat_workers=args.repeat_workers,
             fold_workers=args.fold_workers,
+            execution_config=args.execution_config,
+            scheduler=args.scheduler,
+            automatic_fit_threads="n_jobs" not in getattr(args, "_explicit_parallel", set()),
+            resume_from=args.resume_from,
             test_size=args.test_size,
             n_splits=args.n_splits,
             n_repeats=args.n_repeats,
@@ -386,8 +471,10 @@ def main(
             feature_id_mode="vcf" if args.preserve_vcf_snp_ids else None,
         )
 
-        predictor.cli_config = {key: sorted(value) if isinstance(value, set) else value
-                                for key, value in vars(args).items()}
+        predictor.cli_config = {
+            key: sorted(value) if isinstance(value, set) else value
+            for key, value in vars(args).items()
+        }
         _write_config_to_log(args)
         predictor.console_verbosity = args.verbosity
         predictor.progress = args.progress
@@ -423,6 +510,7 @@ def main(
         return 130
     finally:
         from gpse.utils.log_utils import set_training_verbosity
+
         set_training_verbosity(None)
 
 

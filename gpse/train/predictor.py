@@ -36,12 +36,14 @@ class _LazyMainLogger:
     This prevents spurious "GPSE config loaded" messages when a user
     simply runs ``gpse train`` without arguments and only wants help.
     """
+
     _real = None
 
     @classmethod
     def _get(cls):
         if cls._real is None:
             from gpse.utils.log_utils import logger_init
+
             cls._real = logger_init()
         return cls._real
 
@@ -148,6 +150,10 @@ class GenomicPredictorV2:
         output_paths=None,
         cpu_budget: int | None = None,
         fold_workers: int | None = None,
+        execution_config=None,
+        resume_from=None,
+        scheduler=None,
+        automatic_fit_threads=None,
     ):
         """
         Initialize the predictor.
@@ -197,19 +203,43 @@ class GenomicPredictorV2:
             Whether to standardize phenotype data (regression only).
         """
         from gpse.train._cv_statistics import STABILITY_METRICS
+
         if cv_stability_metric not in STABILITY_METRICS:
             raise ValueError(f"Unknown CV stability metric: {cv_stability_metric}")
         if n_repeats < 1 or n_splits < 2:
             raise ValueError("CV requires >=1 repeat and >=2 folds")
         if n_repeats == 1 and cv_stability_metric == "cv_std_repeat":
-            raise ValueError("cv_std_repeat requires >=2 repeats; explicitly choose cv_std_within for a single-repeat run")
+            raise ValueError(
+                "cv_std_repeat requires >=2 repeats; explicitly choose cv_std_within for a single-repeat run"
+            )
         self.cv_stability_metric = cv_stability_metric
         self.random_seed = random_seed
         self.results_dir = results_dir
         self.n_trials = n_trials
         self.n_threads = n_threads
+        self.automatic_fit_threads = (n_threads == 1 if automatic_fit_threads is None
+                                      else automatic_fit_threads)
         self.max_parallel_jobs = max_parallel_jobs
         self.repeat_workers = repeat_workers
+        if scheduler not in {None, "elastic_v1", "thread_plan", "legacy"}:
+            raise ValueError("Unknown execution scheduler")
+        if scheduler == "legacy" and (execution_config is not None or resume_from is not None):
+            raise ValueError("legacy conflicts with execution_config/resume_from")
+        if resume_from is not None and execution_config is None:
+            execution_config = Path(resume_from) / "resource_plan.json"
+        if execution_config is not None:
+            from gpse.train._execution_config import ExecutionConfig
+
+            if isinstance(execution_config, (str, Path)):
+                execution_config = ExecutionConfig.load(execution_config)
+            if scheduler is not None and scheduler != execution_config.scheduler:
+                raise ValueError("scheduler conflicts with execution_config")
+        self.scheduler = (execution_config.scheduler if execution_config is not None
+                          else scheduler or "elastic_v1")
+        if cpu_budget is None and self.scheduler != "legacy":
+            from gpse.utils.parallel import resolve_cpu_budget
+
+            cpu_budget = resolve_cpu_budget(execution_config.cpu_budget if execution_config else None)
         if fold_workers is not None and fold_workers < 1:
             raise ValueError("fold_workers must be positive")
         if fold_workers is not None and fold_workers > 1 and cpu_budget is None:
@@ -217,10 +247,24 @@ class GenomicPredictorV2:
         self.fold_workers = fold_workers
         if cpu_budget is not None:
             from gpse.utils.parallel import resolve_cpu_budget
+
             cpu_budget = resolve_cpu_budget(cpu_budget)
-            if n_threads < 1 or n_threads > cpu_budget or min(max_parallel_jobs, repeat_workers) < 1:
+            if (
+                n_threads < 1
+                or n_threads > cpu_budget
+                or min(max_parallel_jobs, repeat_workers) < 1
+            ):
                 raise ValueError("Invalid shared-pool thread/worker limits")
         self.cpu_budget = cpu_budget
+        if execution_config is not None:
+            from gpse.train._execution_config import ExecutionConfig
+
+            if isinstance(execution_config, (str, Path)):
+                execution_config = ExecutionConfig.load(execution_config)
+            if cpu_budget != execution_config.cpu_budget:
+                raise ValueError("Execution config CPU budget must match predictor cpu_budget")
+        self.execution_config = execution_config
+        self.resume_from = str(Path(resume_from).resolve()) if resume_from else None
         self.test_size = test_size
         self.n_splits = n_splits
         self.n_repeats = n_repeats
@@ -264,6 +308,10 @@ class GenomicPredictorV2:
             raise ValueError("n_classes must be specified for classification tasks")
 
         # Create results directory
+        if self.resume_from is not None:
+            from gpse.train._task_store import validate_recovery_paths
+
+            validate_recovery_paths(results_dir, self.resume_from)
         self.results_dir = Path(results_dir)
         self.results_dir.mkdir(exist_ok=True, parents=True)
 
@@ -299,7 +347,8 @@ class GenomicPredictorV2:
         # Initialize model optimizer
         if task_type == "regression":
             self.model_optimizer = RegressionModelOptimizer(
-                random_seed=random_seed, n_threads=n_threads,
+                random_seed=random_seed,
+                n_threads=n_threads,
                 catboost_train_dir=str(self.results_dir / "catboost_info"),
                 model_config_path=model_config,
             )

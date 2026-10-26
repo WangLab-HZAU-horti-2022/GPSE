@@ -295,9 +295,20 @@ class ModelRegistry:
         if isinstance(merged.get("hidden_layer_sizes"), list):
             merged["hidden_layer_sizes"] = tuple(merged["hidden_layer_sizes"])
 
-        merged = _inject_threads(
-            merged, entry.thread_strategy, max(self.n_threads, entry.min_threads)
+        from gpse.train._thread_plan import estimator_thread_count
+
+        threads = estimator_thread_count(
+            model_name, entry.import_path, max(self.n_threads, entry.min_threads)
         )
+        merged = _inject_threads(merged, entry.thread_strategy, threads)
+
+        from gpse.train._thread_plan import current_plan
+
+        if current_plan() is not None:
+            from gpse.utils.training_monitor import publish
+
+            publish("estimator_threads", "resolved", model=model_name,
+                    thread_parameters={key: merged[key] for key in entry.thread_strategy})
 
         if entry.extra.get("catboost_train_dir"):
             if self.catboost_train_dir:
@@ -319,6 +330,10 @@ class ModelRegistry:
                 merged.setdefault("is_unbalance", True)
 
         cls = _resolve_import_path(entry.import_path)
+        if current_plan() is not None and current_plan().adapter == "catboost_threads":
+            from gpse.models._lease_catboost import adapter_class
+
+            cls = adapter_class(entry.import_path)
         return cls(**merged)
 
     def filter_model_params(self, model_name: str, params: Dict[str, Any]) -> Dict[str, Any]:

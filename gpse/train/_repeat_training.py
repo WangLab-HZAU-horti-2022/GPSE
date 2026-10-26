@@ -190,6 +190,7 @@ def train_and_evaluate_model_for_repeat(
     optimization_fold_runner=None,
     data_partition=None,
     cv_folds=None,
+    ensemble_runner=None,
 ) -> Dict[str, Any]:
     """
     Train and evaluate a model for one repeat.
@@ -348,21 +349,26 @@ def train_and_evaluate_model_for_repeat(
         avg_metrics = self._calculate_fold_average_metrics(
             fold_results, repeat_idx, task_logger, model_name=model_name
         )
-        ensemble_metrics = self._compute_ensemble_predictions(
-            model_name,
-            params,
-            folds,
-            X,
-            X_train,
-            y_train,
-            X_test,
-            y_test,
-            repeat_dir,
-            task_logger,
-            y_test_original=y_test_original,
-            phenotype_scaler=phenotype_scaler,
-            fold_predictions=ensemble_predictions,
-        )
+        if ensemble_runner is not None:
+            ensemble_metrics = ensemble_runner(
+                params, folds, ensemble_predictions, repeat_dir, phenotype_scaler, y_test_original
+            )
+        else:
+            ensemble_metrics = self._compute_ensemble_predictions(
+                model_name,
+                params,
+                folds,
+                X,
+                X_train,
+                y_train,
+                X_test,
+                y_test,
+                repeat_dir,
+                task_logger,
+                y_test_original=y_test_original,
+                phenotype_scaler=phenotype_scaler,
+                fold_predictions=ensemble_predictions,
+            )
     else:
         task_logger.error("All folds failed, cannot compute average performance")
         avg_metrics = self._get_default_fold_metrics()

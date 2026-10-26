@@ -217,6 +217,8 @@ def _train_single_fold(
     except Exception as e:
         task_logger.error(f"Fold {fold_idx + 1} training failed: {str(e)}")
         task_logger.error(traceback.format_exc())
+        if getattr(self, "execution_config", None) is not None:
+            raise
         return None
 
 

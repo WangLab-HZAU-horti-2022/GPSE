@@ -55,15 +55,32 @@ def get_available_cpu_cores(logger: Any | None = None) -> int:
         try:
             quota, period = (directory / "cpu.max").read_text().split()
             if quota != "max":
-                available = min(available, max(1, math.ceil(int(quota) / int(period))))
+                fractional = int(quota) / int(period)
+                if fractional < 1:
+                    _log(logger, "warning", f"CPU quota={fractional:g}; degraded to one throttled worker")
+                    if logger is None:
+                        import warnings
+
+                        warnings.warn(
+                            f"CPU quota={fractional:g}; using one throttled worker",
+                            RuntimeWarning, stacklevel=2,
+                        )
+                available = min(available, max(1, math.floor(fractional)))
         except (OSError, ValueError, ZeroDivisionError):
             try:
                 quota = int((directory / "cpu.cfs_quota_us").read_text())
                 period = int((directory / "cpu.cfs_period_us").read_text())
                 if quota > 0 and period > 0:
-                    available = min(available, max(1, math.ceil(quota / period)))
+                    available = min(available, max(1, math.floor(quota / period)))
             except (OSError, ValueError):
                 pass
+    for variable in ("SLURM_CPUS_PER_TASK", "PBS_NP", "NSLOTS", "LSB_DJOB_NUMPROC"):
+        try:
+            allocation = int(os.environ.get(variable, ""))
+            if allocation > 0:
+                available = min(available, allocation)
+        except ValueError:
+            pass
     available = max(1, available)
     _log(logger, "debug", f"Available CPU budget (affinity/cgroup): {available}")
     return available

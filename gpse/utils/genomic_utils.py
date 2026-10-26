@@ -518,7 +518,7 @@ def train_fold_model(model: Any, X_fold_train_scaled: np.ndarray,
         trained_model, training_time
     """
     import time
-    from threadpoolctl import threadpool_limits
+    from gpse.train._thread_plan import training_thread_limits as threadpool_limits
 
     start_time = time.time()
     with threadpool_limits(limits=n_threads):

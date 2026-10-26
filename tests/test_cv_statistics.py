@@ -208,6 +208,7 @@ def test_real_pipeline_selection_stacking_and_training_only_refit(tmp_path, monk
     y = pd.Series(X.iloc[:, 0].to_numpy() * 2 + rng.normal(size=80) * 0.1, index=X.index)
     predictor = GenomicPredictorV2(
         results_dir=str(tmp_path / "run"),
+        scheduler="legacy",
         n_repeats=50,
         n_splits=5,
         use_default_params=True,
@@ -272,6 +273,7 @@ def test_real_pipeline_selection_stacking_and_training_only_refit(tmp_path, monk
     changed_y.iloc[holdout] = changed_y.iloc[holdout] * -100 + 999
     again = GenomicPredictorV2(
         results_dir=str(tmp_path / "run_again"),
+        scheduler="legacy",
         n_repeats=50,
         n_splits=5,
         use_default_params=True,

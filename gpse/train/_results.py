@@ -266,7 +266,7 @@ def write_result_bundle(
             "split_manifest": split_manifest,
             "stacking_selection": stacking_selection,
         },
-        "leaderboard": leaderboard.to_dict(orient="records"),
+        "leaderboard": leaderboard.astype(object).where(pd.notna(leaderboard), None).to_dict(orient="records"),
     }
     json_path = reports_dir / "run_summary.json"
     json_path.write_text(

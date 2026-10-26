@@ -14,7 +14,9 @@ import time
 import uuid
 
 from loguru import logger
-from threadpoolctl import threadpool_limits, threadpool_info
+from threadpoolctl import threadpool_info
+
+from gpse.train._thread_plan import training_thread_limits as threadpool_limits
 
 from gpse.config import ModelConstants
 from gpse.train._repeat_training import aggregate_model_repeats
@@ -38,11 +40,16 @@ def _initialize(predictor, X, y, cv_data, test_indices, config, warmup_gate=None
 
     reset_partition()
     init_client(config)
+    native_threads = 1 if getattr(predictor, "execution_config", None) else predictor.n_threads
+    if getattr(predictor, "_checkpoint_fingerprint", None):
+        from gpse.train._task_store import hold_worker_lock
+
+        hold_worker_lock(predictor.paths.run_dir)
     for variable in ModelConstants.thread_env_vars:
-        os.environ[variable] = str(predictor.n_threads)
+        os.environ[variable] = str(native_threads)
     _WORKER = (predictor, X, y, cv_data, test_indices)
     _WARMUP_GATE = warmup_gate
-    publish("worker", "ready", native_threads=predictor.n_threads, native_pools=threadpool_info())
+    publish("worker", "ready", native_threads=native_threads, native_pools=threadpool_info())
 
 
 def _execute(kind, model, repeat, payload):
@@ -50,8 +57,8 @@ def _execute(kind, model, repeat, payload):
         _WARMUP_GATE.wait()
         return None
     predictor, X, y, cv_data, indices = _WORKER
-    with threadpool_limits(limits=predictor.get_effective_threads(model)):
-        if kind in {"training_fold", "optimization_fold", "cv_folds"}:
+    with threadpool_limits(limits=predictor.n_threads):
+        if kind in {"training_fold", "optimization_fold", "cv_folds", "repeat_ensemble"}:
             from gpse.train._fold_scheduler import execute_fold
 
             return execute_fold(kind, model, repeat, payload, _WORKER)
@@ -64,11 +71,80 @@ def _execute(kind, model, repeat, payload):
         )
         with logger.contextualize(model=model):
             return aggregate_model_repeats(
-                predictor, model, X, y, payload, predictor.paths.model_dir(model)
+                predictor,
+                model,
+                X,
+                y,
+                payload["results"] if isinstance(payload, dict) else payload,
+                (
+                    payload["model_dir"]
+                    if isinstance(payload, dict)
+                    else predictor.paths.model_dir(model)
+                ),
             )
 
 
-def run_budgeted_models(predictor, models, X, y, cv_data, indices):
+def _execute_leased(kind, model, repeat, payload, lease):
+    """Compute entry for the opt-in dispatcher; one lease covers fit and score."""
+    from dataclasses import asdict
+
+    from gpse.train._thread_plan import execution_plan, plan_for, leased_worker_observation
+
+    if (lease.key.model, lease.key.repeat, lease.key.stage) != (model, repeat, kind):
+        raise ValueError("Task identity does not match its compute lease")
+    predictor = _WORKER[0]
+    optimizer = (
+        predictor.model_optimizer
+        if predictor.task_type == "regression"
+        else predictor.classification_optimizer
+    )
+    entry = optimizer._registry.model_configs[model]
+    plan = plan_for(model, entry.import_path, lease.request.cpu)
+    checkpointed = getattr(predictor, "_checkpoint_fingerprint", None) is not None
+    if checkpointed and kind == "training_fold":
+        from gpse.train._task_store import stage_directory
+
+        stage = stage_directory(lease)
+        stage.mkdir(parents=True, exist_ok=False)
+        payload = (*payload[:4], stage)
+    if checkpointed and kind == "finalize":
+        from gpse.train._task_store import stage_directory
+
+        stage = stage_directory(lease)
+        (stage / "model").mkdir(parents=True, exist_ok=False)
+        payload = {"results": payload, "model_dir": stage / "model"}
+    from gpse.train._task_store import task_artifacts
+
+    with execution_plan(plan), leased_worker_observation(lease), task_artifacts(lease):
+        publish(
+            "thread_plan",
+            "started",
+            model=model,
+            lease_id=lease.lease_id,
+            attempt=lease.attempt,
+            worker_generation=lease.generation,
+            thread_plan=asdict(plan),
+            native_pools=threadpool_info(),
+        )
+        result = _execute(kind, model, repeat, payload)
+        if checkpointed and kind == "finalize":
+            import json
+            from gpse.train._task_store import relocate
+            from gpse.config.constants import NumpyEncoder
+
+            result = relocate(result, stage / "model", predictor.paths.model_dir(model))
+            (stage / "model" / "summary_results.json").write_text(
+                json.dumps(result, indent=2, cls=NumpyEncoder)
+            )
+        if checkpointed:
+            from gpse.train._task_store import STAGES, prepare_result
+
+            if kind in STAGES:
+                return prepare_result(lease, result)
+        return result
+
+
+def run_budgeted_models(predictor, models, X, y, cv_data, indices, resource_manager=None):
     fold_limit = min(predictor.n_splits, predictor.fold_workers or predictor.n_splits)
     controller_limit = max(
         1,
@@ -85,7 +161,18 @@ def run_budgeted_models(predictor, models, X, y, cv_data, indices):
         * fold_limit,
     )
     cap = max(1, cap)
-    parallel_folds = cap > 1 and fold_limit > 1
+    execution_config = getattr(predictor, "execution_config", None)
+    if execution_config is not None:
+        # Validate all selected profiles before starting a compute pool.
+        execution_config.make_manager(models)
+        cap = execution_config.worker_slots
+        controller_limit = max(
+            1,
+            min(len(models), predictor.max_parallel_jobs)
+            * min(predictor.n_repeats, predictor.repeat_workers),
+        )
+        execution_config.write_plan(predictor.paths.run_dir / "resource_plan.json")
+    parallel_folds = execution_config is not None or (cap > 1 and fold_limit > 1)
     warmup_gate = mp.get_context("spawn").Event() if parallel_folds else None
     states = {
         name: {
@@ -121,9 +208,11 @@ def run_budgeted_models(predictor, models, X, y, cv_data, indices):
         "configured",
         cpu_budget=predictor.cpu_budget,
         worker_limit=cap,
-        threads_per_worker=predictor.n_threads,
+        threads_per_worker=None if execution_config else predictor.n_threads,
         scheduling=(
-            "shared_fold_repeat_refit_pool" if parallel_folds else "shared_repeat_refit_pool"
+            execution_config.scheduler
+            if execution_config
+            else ("shared_fold_repeat_refit_pool" if parallel_folds else "shared_repeat_refit_pool")
         ),
         controller_limit=controller_limit,
         fold_workers=fold_limit if parallel_folds else 1,
@@ -136,7 +225,7 @@ def run_budgeted_models(predictor, models, X, y, cv_data, indices):
         initializer=_initialize,
         initargs=(predictor, X, y, cv_data, indices, get_client_config(), warmup_gate),
         logger=logger,
-        native_threads=predictor.n_threads,
+        native_threads=1 if execution_config else predictor.n_threads,
     )
     if parallel_folds:
         from gpse.train._fold_scheduler import fold_training_pool
@@ -153,10 +242,12 @@ def run_budgeted_models(predictor, models, X, y, cv_data, indices):
             controller_limit,
             fold_limit,
             warmup_gate,
+            models=models,
+            resource_manager=resource_manager,
         )
     with pool_context as executor:
         while not all(state["finished"] for state in states.values()):
-            while len(futures) < cap:
+            while len(futures) < (controller_limit if execution_config else cap):
                 submitted = False
                 cpu_budget = getattr(predictor, "cpu_budget", None)
                 used_tokens = (

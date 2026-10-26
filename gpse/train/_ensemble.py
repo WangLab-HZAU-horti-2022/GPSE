@@ -18,7 +18,7 @@ from typing import Dict
 from loguru import logger as main_logger
 
 from gpse.utils.genomic_utils import calculate_metrics
-from threadpoolctl import threadpool_limits
+from gpse.train._thread_plan import training_thread_limits as threadpool_limits
 from gpse.train._feature_selection import (
     make_model_artifact,
     unpack_model_artifact,
@@ -102,6 +102,8 @@ def _save_deployment_ensemble(self, model_name, params, X, y, model_dir):
     except Exception as exc:
         main_logger.error(f"Saving deployment ensemble failed: {exc}")
         main_logger.error(traceback.format_exc())
+        if getattr(self, "execution_config", None) is not None:
+            raise
         return None
 
 
@@ -252,4 +254,6 @@ def _compute_ensemble_predictions(
     except Exception as e:
         task_logger.error(f"Computing fold-ensemble predictions failed: {str(e)}")
         task_logger.error(traceback.format_exc())
+        if getattr(self, "execution_config", None) is not None:
+            raise
         return self._get_default_ensemble_metrics()

@@ -1,0 +1,20 @@
+{
+  "regression": {
+    "models": 15,
+    "fold_models": 90,
+    "OOF_rows_per_repeat": 144,
+    "leases": 157,
+    "all_released": true,
+    "failed_models": 0,
+    "stacking_and_report": true
+  },
+  "classification": {
+    "models": 6,
+    "fold_models": 36,
+    "OOF_rows_per_repeat": 144,
+    "leases": 76,
+    "all_released": true,
+    "failed_models": 0,
+    "stacking_and_report": true
+  }
+}

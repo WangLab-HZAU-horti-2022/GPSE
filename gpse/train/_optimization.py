@@ -22,7 +22,7 @@ from loguru import logger as main_logger
 
 from gpse.config import ModelConstants
 from gpse.utils.genomic_utils import generate_optimization_seed
-from threadpoolctl import threadpool_limits
+from gpse.train._thread_plan import training_thread_limits as threadpool_limits
 from gpse.train._model_pipeline import build_training_pipeline
 from gpse.models.safe_kernel_ridge import KernelNumericalError
 

@@ -390,9 +390,9 @@ gpse train \
 
 > **💡 Shortcut for total core usage: `--threads`**
 >
-> If you just want to say "use about N cores", you can use `--threads N` and GPSE
-> will automatically derive `--max_workers` and `--repeat_workers` for you
-> (keeping `--n_jobs` at 1 to avoid oversubscription):
+> `--threads N` sets the shared logical CPU budget. GPSE derives model, repeat
+> and fold concurrency and, when useful, threads per fit within that budget.
+> The requested budget must fit the detected affinity, cgroup quota and job allocation:
 >
 > ```bash
 > gpse train \
@@ -404,10 +404,27 @@ gpse train \
 >     --results_dir output_results/
 > ```
 >
-> With 14 regression models this resolves to `--max_workers 14 --repeat_workers 7`,
-> giving ~98 concurrent training units. If `--n_repeats` is 1, the effective
-> parallelism is capped at the number of models (14); increase `--n_repeats` or
-> explicitly set `--n_jobs` if you need more.
+> Models, repeats and folds share one compute pool; their configured counts do
+> not multiply into independent CPU budgets. `--n_jobs` controls threads per fit
+> on the legacy path; `--fold_workers` caps concurrent folds per repeat/trial.
+> Actual CPU utilization depends on runnable work and the estimator.
+
+`elastic_v1` is enabled by default with lease-derived thread plans and
+CPU/memory/worker admission. It refills fold windows on completion and uses
+weighted model admission. Without a YAML file, GPSE generates a memory-bounded
+plan after loading data and saves `resource_plan.json`. Optional
+`--execution_config path/to/execution.yaml` profiles specify per-fit CPU, memory
+and a model-wide `max_active_fits` across repeats. See the
+[configuration and verification report](docs/26.10.26/threading_implementation_report.md)
+for a complete YAML example, compatibility rules and current limitations.
+Use `--scheduler legacy` in a fresh results directory to select legacy scheduling.
+Use `--resume_from old_run --results_dir new_run` with the same execution and
+experiment configuration to recover verified fit checkpoints from a stopped run.
+Inputs, code, dependency versions, task parameters and artifact hashes are checked;
+an active coordinator or worker blocks recovery. The destination must be fresh.
+Runs created before task checkpoints were introduced cannot be recovered this way.
+The default was changed at the user's request; small-workload measurements have
+not established a speedup, and 80-CPU performance is still awaiting acceptance.
 
 > **💡 `--task_type` and `--n_classes` are now optional**
 >
