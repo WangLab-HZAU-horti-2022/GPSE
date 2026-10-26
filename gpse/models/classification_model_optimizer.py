@@ -83,6 +83,10 @@ class ClassificationModelOptimizer:
         """Create classification model instance via the registry."""
         return self._registry.create_model(model_name, params)
 
+    def get_effective_threads(self, model_name: str) -> int:
+        """Effective per-fit thread count via the registry."""
+        return self._registry.get_effective_threads(model_name)
+
     def get_classification_default_params(self, model_name: str) -> Dict[str, Any]:
         """Get default parameters via the registry."""
         return self._registry.get_default_params(model_name)
@@ -209,13 +213,13 @@ class ClassificationModelOptimizer:
         return param_dict
 
     def _svc_clf_params(self, trial: optuna.Trial) -> Dict[str, Any]:
-        """SVM classifier parameters."""
+        """SVM classifier parameters (sklearn.svm.SVC)."""
         return {
-            'loss': trial.suggest_categorical('loss', ['hinge', 'squared_hinge']),
-            'dual': trial.suggest_categorical('dual', ['auto']),
-            'penalty': trial.suggest_categorical('penalty', ['l2']),
+            'kernel': trial.suggest_categorical('kernel', ['rbf', 'linear', 'poly', 'sigmoid']),
             'C': trial.suggest_float('C', 1e-5, 1e2, log=True),
+            'gamma': trial.suggest_categorical('gamma', ['scale', 'auto']),
             'tol': trial.suggest_float('tol', 1e-8, 1e2, log=True),
+            'probability': True,
             'random_state': self.random_seed
         }
 

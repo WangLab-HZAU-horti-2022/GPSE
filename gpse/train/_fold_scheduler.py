@@ -94,12 +94,20 @@ def execute_fold(kind, model, repeat, payload, worker):
 
 
 class _Dispatcher:
-    def __init__(self, pool, execute, capacity):
+    def __init__(self, pool, execute, capacity, cost_fn=None, token_budget=None):
         self.pool, self.execute, self.capacity = pool, execute, capacity
         self.slots = threading.BoundedSemaphore(capacity)
         self.stopped = threading.Event()
         self.lock = threading.Lock()
         self.pending = set()
+        if callable(cost_fn) and token_budget:
+            self.cost_fn = cost_fn
+            self.token_budget = token_budget
+        else:
+            self.cost_fn = lambda model: 1
+            self.token_budget = capacity
+        self.used_tokens = 0
+        self.tokens = threading.Condition(self.lock)
 
     def submit(self, kind, model, repeat, payload):
         while not self.stopped.is_set():
@@ -107,7 +115,20 @@ class _Dispatcher:
                 break
         else:
             raise CancelledError("Training cancelled")
+        cost = self.cost_fn(model)
+        acquired = False
         try:
+            with self.tokens:
+                while (
+                    self.used_tokens > 0
+                    and self.used_tokens + cost > self.token_budget
+                    and not self.stopped.is_set()
+                ):
+                    self.tokens.wait(timeout=0.1)
+                if self.stopped.is_set():
+                    raise CancelledError("Training cancelled")
+                self.used_tokens += cost
+                acquired = True
             if self.stopped.is_set():
                 raise CancelledError("Training cancelled")
             future = self.pool.submit(self.execute, kind, model, repeat, payload)
@@ -124,12 +145,18 @@ class _Dispatcher:
                     queue="compute",
                 )
         except BaseException:
+            if acquired:
+                with self.tokens:
+                    self.used_tokens -= cost
+                    self.tokens.notify_all()
             self.slots.release()
             raise
 
         def finished(done):
-            with self.lock:
+            with self.tokens:
                 self.pending.discard(done)
+                self.used_tokens -= cost
+                self.tokens.notify_all()
             self.slots.release()
 
         future.add_done_callback(finished)
@@ -266,7 +293,13 @@ def fold_training_pool(
                 warmup_gate.set()
             for future in warmup:
                 future.result()
-            dispatcher = _Dispatcher(pool, execute, capacity)
+            dispatcher = _Dispatcher(
+                pool,
+                execute,
+                capacity,
+                cost_fn=getattr(predictor, "get_effective_threads", None),
+                token_budget=getattr(predictor, "cpu_budget", None),
+            )
             controllers = ThreadPoolExecutor(
                 max_workers=controller_limit, thread_name_prefix="gpse-repeat"
             )

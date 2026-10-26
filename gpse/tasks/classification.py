@@ -530,6 +530,10 @@ class GenomicClassifier:
         """
         return self.classification_optimizer.create_classification_model(model_name, params)
 
+    def get_effective_threads(self, model_name: str) -> int:
+        """Effective per-fit thread count for a classification model."""
+        return self.classification_optimizer.get_effective_threads(model_name)
+
     def get_classification_default_params(self, model_name: str) -> Dict[str, Any]:
         """
         Get default parameters for classification models.

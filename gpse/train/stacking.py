@@ -51,11 +51,11 @@ def _init_stack_worker(X, y, X_test, n_threads, task_type, log_dir, config):
     configure_worker(config, Path(log_dir) / f"stacking_{os.getpid()}.log")
 
 
-def _stack_job(pipeline, model_name, fold_idx, train_idx, val_idx):
+def _stack_job(pipeline, model_name, fold_idx, train_idx, val_idx, limits=None):
     X, y, X_test, threads, task_type = _STACK_DATA
     stage = "stacking_refit" if fold_idx is None else "stacking_fold"
     with observation(stage, model=model_name, fold=None if fold_idx is None else fold_idx + 1):
-        with threadpool_limits(limits=threads):
+        with threadpool_limits(limits=limits if limits is not None else threads):
             if train_idx is None:
                 pipeline.fit(X, y)
                 target = X_test
@@ -90,6 +90,7 @@ class StackingEnsemble:
         feature_selection_config=None,
         genotype_imputation_config=None,
         cpu_budget=None,
+        thread_resolver: Optional[Callable[[str], int]] = None,
     ):
         self.base_models_dir = base_models_dir
         self._model_factory = model_factory
@@ -104,11 +105,17 @@ class StackingEnsemble:
         self.task_type = task_type
         self.feature_selection_config = feature_selection_config or FeatureSelectionConfig()
         self.genotype_imputation_config = genotype_imputation_config or GenotypeImputationConfig()
+        self._thread_resolver = thread_resolver
         os.makedirs(self.output_dir, exist_ok=True)
         self.base_models: Dict[str, Any] = {}
         self.selected_models: List[str] = []
         self.meta_model = None
         self.meta_features_cols: List[str] = []
+
+    def _effective_threads(self, model_name: str) -> int:
+        if self._thread_resolver is not None:
+            return self._thread_resolver(model_name)
+        return self.n_threads
 
     def _prediction_feature(self, model: Any, X: np.ndarray) -> np.ndarray:
         if self.task_type == "classification" and hasattr(model, "predict_proba"):
@@ -150,7 +157,7 @@ class StackingEnsemble:
                         feature_selection_config=self.feature_selection_config,
                         genotype_imputation_config=self.genotype_imputation_config,
                     )
-                    with threadpool_limits(limits=self.n_threads):
+                    with threadpool_limits(limits=self._effective_threads(model_name)):
                         fold_pipeline.fit(X_train.iloc[train_idx], y_train.iloc[train_idx])
                     meta_train[val_idx, column] = self._prediction_feature(
                         fold_pipeline, X_train.iloc[val_idx]
@@ -163,7 +170,7 @@ class StackingEnsemble:
                 feature_selection_config=self.feature_selection_config,
                 genotype_imputation_config=self.genotype_imputation_config,
             )
-            with threadpool_limits(limits=self.n_threads):
+            with threadpool_limits(limits=self._effective_threads(model_name)):
                 full_pipeline.fit(X_train, y_train)
             self.base_models[model_name] = full_pipeline
             if X_test is not None:
@@ -190,12 +197,14 @@ class StackingEnsemble:
                     pipeline = build_training_pipeline(self._model_factory(name), task_type=self.task_type,
                                                        model_name=name, feature_selection_config=self.feature_selection_config,
                                                        genotype_imputation_config=self.genotype_imputation_config)
-                    future = pool.submit(_stack_job, pipeline, name, fold_idx, train, val)
+                    future = pool.submit(_stack_job, pipeline, name, fold_idx, train, val,
+                                         self._effective_threads(name))
                     futures[future] = (column, name, val)
                 pipeline = build_training_pipeline(self._model_factory(name), task_type=self.task_type,
                                                    model_name=name, feature_selection_config=self.feature_selection_config,
                                                    genotype_imputation_config=self.genotype_imputation_config)
-                future = pool.submit(_stack_job, pipeline, name, None, None, None)
+                future = pool.submit(_stack_job, pipeline, name, None, None, None,
+                                     self._effective_threads(name))
                 futures[future] = (column, name, None)
             for future in as_completed(futures):
                 column, name, val = futures[future]

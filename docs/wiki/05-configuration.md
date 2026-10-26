@@ -67,6 +67,7 @@ models:
     task: regression             # regression | classification
     import_path: sklearn.ensemble.BaggingRegressor  # lazy-imported at creation
     thread_strategy: n_jobs      # none | n_jobs | nthread | thread_count | [list]
+    min_threads: 1               # optional floor for injected thread count
     default_params:              # fallback hyperparams (--use_default_params)
       n_estimators: 100
       random_state: "{random_seed}"
@@ -83,6 +84,7 @@ models:
 | `task` | yes | `regression` or `classification` |
 | `import_path` | yes | Fully-qualified class path (e.g. `sklearn.ensemble.RandomForestRegressor`) |
 | `thread_strategy` | yes | How to inject thread count: `none`, `n_jobs`, `nthread`, `thread_count`, or a list |
+| `min_threads` | no | Per-model floor for the injected thread count (default `1`); effective threads = `max(--n_jobs budget, min_threads)`. Set to `8` for `xgboost_reg`/`xgboost_clf`/`rf_reg`/`rf_clf`/`lightgbm_reg`/`lightgbm_clf`/`catboost_reg`/`catboost_clf`. The shared pool accounts per-model thread tokens so concurrent fits never exceed the total CPU budget |
 | `default_params` | yes | Fallback params; supports `{random_seed}`, `{n_threads}`, `{n_classes}` placeholders |
 | `search_space` | conditional | Inline Optuna DSL (for flat search spaces) |
 | `param_func` | conditional | Python reference for complex search spaces: `"builtin:_xgboost_reg_params"` or `"my_module:my_func"` |

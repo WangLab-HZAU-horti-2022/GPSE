@@ -50,7 +50,7 @@ def _execute(kind, model, repeat, payload):
         _WARMUP_GATE.wait()
         return None
     predictor, X, y, cv_data, indices = _WORKER
-    with threadpool_limits(limits=predictor.n_threads):
+    with threadpool_limits(limits=predictor.get_effective_threads(model)):
         if kind in {"training_fold", "optimization_fold", "cv_folds"}:
             from gpse.train._fold_scheduler import execute_fold
 
@@ -158,6 +158,12 @@ def run_budgeted_models(predictor, models, X, y, cv_data, indices):
         while not all(state["finished"] for state in states.values()):
             while len(futures) < cap:
                 submitted = False
+                cpu_budget = getattr(predictor, "cpu_budget", None)
+                used_tokens = (
+                    sum(predictor.get_effective_threads(n) for n, _, _ in futures.values())
+                    if cpu_budget is not None and not parallel_folds
+                    else 0
+                )
                 active_models = sum(
                     s["started"] is not None and not s["finished"] for s in states.values()
                 )
@@ -173,6 +179,13 @@ def run_budgeted_models(predictor, models, X, y, cv_data, indices):
                         state["started"] = time.monotonic()
                         create_model_result_directory(predictor.paths.models_dir, name)
                         emit(name, "started")
+                    if (
+                        not parallel_folds
+                        and cpu_budget is not None
+                        and futures
+                        and used_tokens + predictor.get_effective_threads(name) > cpu_budget
+                    ):
+                        continue
                     if state["done"] == predictor.n_repeats:
                         future = executor.submit(_execute, "finalize", name, None, state["results"])
                         state["finalizing"] = True

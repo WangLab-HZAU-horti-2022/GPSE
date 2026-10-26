@@ -75,6 +75,10 @@ class RegressionModelOptimizer:
         """Create model instance via the registry."""
         return self._registry.create_model(model_name, params)
 
+    def get_effective_threads(self, model_name: str) -> int:
+        """Effective per-fit thread count via the registry."""
+        return self._registry.get_effective_threads(model_name)
+
     def get_default_params(self, model_name: str) -> Dict[str, Any]:
         """Get default parameters via the registry."""
         return self._registry.get_default_params(model_name)

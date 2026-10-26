@@ -22,6 +22,14 @@ def create_model(self, model_name: str, params: Dict[str, Any]) -> Any:
         return self.genomic_classifier.create_classification_model(model_name, params)
 
 
+def get_effective_threads(self, model_name: str) -> int:
+    """Effective per-fit thread count for a model (registry min_threads floor)."""
+    if self.task_type == "regression":
+        return self.model_optimizer.get_effective_threads(model_name)
+    else:
+        return self.genomic_classifier.get_effective_threads(model_name)
+
+
 def get_default_params(self, model_name: str) -> Dict[str, Any]:
     """Get default parameters for a model."""
     if self.task_type == "regression":

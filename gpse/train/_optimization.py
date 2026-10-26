@@ -44,7 +44,7 @@ def evaluate_optimization_fold(self, X, y, model_name, params, train_idx, val_id
             feature_selection_config=self.feature_selection_config,
             genotype_imputation_config=self.genotype_imputation_config,
         )
-        with threadpool_limits(limits=self.n_threads):
+        with threadpool_limits(limits=self.get_effective_threads(model_name)):
             fold_model.fit(X_fold_train, y_fold_train)
             estimator = fold_model.named_steps["model"]
             if hasattr(estimator, "get_kernel_metadata"):

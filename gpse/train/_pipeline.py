@@ -448,6 +448,7 @@ def run_all_models(
                 task_type=self.task_type,
                 feature_selection_config=self.feature_selection_config,
                 genotype_imputation_config=self.genotype_imputation_config,
+                thread_resolver=self.get_effective_threads,
             )
 
             stacking_results = stacking_model.fit(

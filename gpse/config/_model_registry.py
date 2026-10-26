@@ -25,6 +25,7 @@ class ModelRegistryEntry:
     import_path: str
     thread_strategy: List[str]
     default_params: Dict[str, Any]
+    min_threads: int = 1
     search_space: Optional[List[Dict[str, Any]]] = None
     param_func: Optional[Callable] = None
     extra: Dict[str, Any] = field(default_factory=dict)
@@ -202,6 +203,12 @@ class ModelRegistry:
         default_params = raw.get("default_params", {})
         extra = raw.get("extra", {})
 
+        min_threads = raw.get("min_threads", 1)
+        if not isinstance(min_threads, int) or isinstance(min_threads, bool) or min_threads < 1:
+            raise ValueError(
+                f"Model '{name}': min_threads must be a positive integer, got {min_threads!r}"
+            )
+
         search_space_raw = raw.get("search_space")
         param_func_ref = raw.get("param_func")
 
@@ -229,6 +236,7 @@ class ModelRegistry:
             import_path=import_path,
             thread_strategy=thread_strategy,
             default_params=default_params,
+            min_threads=min_threads,
             search_space=search_space,
             param_func=param_func,
             extra=extra,
@@ -246,6 +254,13 @@ class ModelRegistry:
         if model_name not in self._entries:
             raise ValueError(f"Model {model_name} not found in configurations")
         return self._entries[model_name].param_func
+
+    def get_effective_threads(self, model_name: str) -> int:
+        """Effective per-fit thread count: ``max(n_threads, min_threads)``."""
+        entry = self._entries.get(model_name)
+        if entry is None:
+            return self.n_threads
+        return max(self.n_threads, entry.min_threads)
 
     def get_default_params(self, model_name: str) -> Dict[str, Any]:
         if model_name not in self._entries:
@@ -280,7 +295,9 @@ class ModelRegistry:
         if isinstance(merged.get("hidden_layer_sizes"), list):
             merged["hidden_layer_sizes"] = tuple(merged["hidden_layer_sizes"])
 
-        merged = _inject_threads(merged, entry.thread_strategy, self.n_threads)
+        merged = _inject_threads(
+            merged, entry.thread_strategy, max(self.n_threads, entry.min_threads)
+        )
 
         if entry.extra.get("catboost_train_dir"):
             if self.catboost_train_dir:

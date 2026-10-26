@@ -67,6 +67,7 @@ from gpse.train._data_io import (
 )
 from gpse.train._model_tools import (
     create_model,
+    get_effective_threads,
     get_default_params,
     get_param_func,
     filter_model_params_unified,
@@ -331,6 +332,7 @@ class GenomicPredictorV2:
     _inverse_standardize_phenotype = _inverse_standardize_phenotype
     save_train_only_cv_folds = save_train_only_cv_folds
     create_model = create_model
+    get_effective_threads = get_effective_threads
     get_default_params = get_default_params
     get_param_func = get_param_func
     filter_model_params_unified = filter_model_params_unified

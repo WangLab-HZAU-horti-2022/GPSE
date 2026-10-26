@@ -63,7 +63,7 @@ def _save_deployment_ensemble(self, model_name, params, X, y, model_dir):
                 feature_selection_config=self.feature_selection_config,
                 genotype_imputation_config=self.genotype_imputation_config,
             )
-            with threadpool_limits(limits=self.n_threads):
+            with threadpool_limits(limits=self.get_effective_threads(model_name)):
                 pipeline.fit(X_member_train, y_member_train)
             preprocessor = pipeline.named_steps["preprocess"]
             joblib.dump(
@@ -166,7 +166,7 @@ def _compute_ensemble_predictions(
                     feature_selection_config=self.feature_selection_config,
                     genotype_imputation_config=self.genotype_imputation_config,
                 )
-                with threadpool_limits(limits=self.n_threads):
+                with threadpool_limits(limits=self.get_effective_threads(model_name)):
                     pipeline.fit(X_fold_train, y_fold_train)
                 preprocessor = pipeline.named_steps["preprocess"]
                 ensemble_models.append(

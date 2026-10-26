@@ -124,6 +124,8 @@ def _apply_threads_budget(args: argparse.Namespace, *, log: bool = True) -> None
         main_logger.bind(console_summary=True).info(
             f"CPU budget={budget}; shared pool ceiling={tasks} training tasks × "
             f"{args.n_jobs} native thread(s). Idle slots are reused across models. "
+            "Models with min_threads use more native threads per fit; the shared pool "
+            "caps total threads at the budget. "
             "Actual CPU usage depends on the estimator and available independent work."
         )
 

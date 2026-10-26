@@ -70,6 +70,9 @@ class _TreeEnsemblePredictor:
     def create_model(_model_name, _params):
         return RandomForestRegressor(n_estimators=10, random_state=17)
 
+    def get_effective_threads(self, _model_name):
+        return self.n_threads
+
 
 def test_classification_holdout_is_stratified():
     y = pd.Series([0] * 30 + [1] * 10)
@@ -221,8 +224,9 @@ def test_catboost_outputs_are_scoped_to_results_directory(tmp_path, monkeypatch)
 
     assert regression_model.params["train_dir"] == str(train_dir)
     assert classification_model.params["train_dir"] == str(train_dir)
-    assert regression_model.params["thread_count"] == 2
-    assert classification_model.params["thread_count"] == 2
+    # catboost carries min_threads=8, which floors the injected thread count.
+    assert regression_model.params["thread_count"] == 8
+    assert classification_model.params["thread_count"] == 8
 
 
 def test_catboost_disables_file_output_without_results_directory(monkeypatch):

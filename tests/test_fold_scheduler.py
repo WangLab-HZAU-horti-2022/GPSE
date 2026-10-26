@@ -2,6 +2,7 @@
 
 from concurrent.futures import CancelledError, ThreadPoolExecutor
 import json
+import math
 import os
 from pathlib import Path
 import signal
@@ -122,6 +123,150 @@ def test_stopping_dispatcher_unblocks_waiting_controllers():
             release.set()
 
 
+def test_dispatcher_without_cost_fn_falls_back_to_task_count():
+    dispatcher = _Dispatcher(None, None, capacity=3)
+    assert dispatcher.cost_fn("anything") == 1
+    assert dispatcher.token_budget == 3
+    no_budget = _Dispatcher(None, None, capacity=3, cost_fn=lambda model: 8, token_budget=None)
+    assert no_budget.cost_fn("anything") == 1
+    assert no_budget.token_budget == 3
+
+
+def test_dispatcher_token_budget_serializes_full_budget_tasks():
+    lock = threading.Lock()
+    running = set()
+    peak = 0
+    costs = {"heavy": 8, "light": 1}
+
+    def execute(kind, model, repeat, payload):
+        nonlocal peak
+        with lock:
+            running.add((model, repeat))
+            peak = max(peak, sum(costs[m] for m, _ in running))
+        try:
+            time.sleep(0.02)
+            return model
+        finally:
+            with lock:
+                running.discard((model, repeat))
+
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        dispatcher = _Dispatcher(
+            pool, execute, capacity=16, cost_fn=costs.get, token_budget=8
+        )
+        futures = [dispatcher.submit("fold", "heavy", i, None) for i in range(2)]
+        futures += [dispatcher.submit("fold", "light", i, None) for i in range(8)]
+        assert [future.result(timeout=10) for future in futures]
+        assert peak <= 8  # Two cost-8 tasks can never overlap; lights fill the gaps.
+        assert dispatcher.used_tokens == 0
+
+
+def test_dispatcher_mixed_costs_fill_budget_without_exceeding():
+    lock = threading.Lock()
+    running = []
+    peak = 0
+    two_lights = threading.Event()
+    costs = {"heavy": 6, "light": 1}
+
+    def execute(kind, model, repeat, payload):
+        nonlocal peak
+        with lock:
+            running.append(model)
+            peak = max(peak, sum(costs[m] for m in running))
+            if sum(1 for m in running if m == "light") >= 2:
+                two_lights.set()
+        try:
+            if model == "heavy":
+                two_lights.wait(timeout=5)
+            time.sleep(0.01)
+        finally:
+            with lock:
+                running.remove(model)
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        dispatcher = _Dispatcher(
+            pool, execute, capacity=8, cost_fn=costs.get, token_budget=8
+        )
+        futures = [dispatcher.submit("fold", "heavy", 0, None)]
+        futures += [dispatcher.submit("fold", "light", i, None) for i in range(4)]
+        for future in futures:
+            future.result(timeout=10)
+        assert peak <= 8
+        assert two_lights.is_set()  # heavy (6) overlapped two lights (1+1) up to the budget
+        assert dispatcher.used_tokens == 0
+
+
+def test_dispatcher_tokens_released_unblock_waiting_tasks():
+    lock = threading.Lock()
+    running = set()
+    overlap = threading.Event()
+
+    def execute(kind, model, repeat, payload):
+        with lock:
+            if running:
+                overlap.set()
+            running.add(repeat)
+        try:
+            time.sleep(0.02)
+            return repeat
+        finally:
+            with lock:
+                running.discard(repeat)
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        dispatcher = _Dispatcher(
+            pool, execute, capacity=4, cost_fn=lambda model: 8, token_budget=8
+        )
+        first = dispatcher.submit("fold", "test", 0, None)
+        # The second task waits for the first task's tokens; it must still run.
+        second = dispatcher.submit("fold", "test", 1, None)
+        assert [first.result(timeout=10), second.result(timeout=10)] == [0, 1]
+        assert not overlap.is_set()  # Never concurrent: 8 + 8 exceeds the budget.
+        assert dispatcher.used_tokens == 0
+
+
+def test_stopping_dispatcher_unblocks_token_waiters():
+    release = threading.Event()
+    with ThreadPoolExecutor(max_workers=2) as pool, ThreadPoolExecutor(max_workers=1) as controls:
+        dispatcher = _Dispatcher(
+            pool,
+            lambda *args: release.wait(timeout=5),
+            capacity=2,
+            cost_fn=lambda model: 8,
+            token_budget=8,
+        )
+        dispatcher.submit("fold", "test", 0, None)
+        # Slots are free (capacity=2) but the token budget is exhausted.
+        blocked = controls.submit(dispatcher.submit, "fold", "test", 1, None)
+        time.sleep(0.1)
+        dispatcher.stop()
+        try:
+            with pytest.raises(CancelledError):
+                blocked.result(timeout=2)
+        finally:
+            release.set()
+
+
+def _assert_json_close(a, b):
+    """Tolerant JSON comparison; multithreaded BLAS reductions vary by one ulp."""
+    if isinstance(a, dict):
+        assert a.keys() == b.keys()
+        for key in a:
+            _assert_json_close(a[key], b[key])
+    elif isinstance(a, list):
+        assert len(a) == len(b)
+        for left, right in zip(a, b):
+            _assert_json_close(left, right)
+    elif isinstance(a, float):
+        assert math.isclose(a, b, abs_tol=1e-12), (a, b)
+    else:
+        assert a == b
+
+
+def _assert_predictions_close(a_path, b_path):
+    _assert_json_close(json.loads(a_path.read_text()), json.loads(b_path.read_text()))
+
+
 def _peak(trace, stages):
     active, peak = set(), 0
     for event in sorted(trace, key=lambda e: e["timestamp"]):
@@ -141,8 +286,12 @@ def test_one_repeat_controller_parallelizes_folds_without_changing_results(tmp_p
     y = 2 * X[0] - X[1] + rng.normal(size=len(X)) * 0.2
     flags = []
     model, task = "kernelridge_reg", "regression"
+    threads = "4"
     if case == "pipeline_custom_cv":
         model = "rf_reg"
+        # rf_reg carries min_threads=8; the token budget must fit two
+        # concurrent folds for the parallelism assertions below.
+        threads = "16"
         flags = [
             "--genotype_imputation",
             "mean",
@@ -192,7 +341,7 @@ def test_one_repeat_controller_parallelizes_folds_without_changing_results(tmp_p
             "--trials",
             "3",
             "--threads",
-            "4",
+            threads,
             "--n_jobs",
             "1",
             "--max_workers",
@@ -220,6 +369,10 @@ def test_one_repeat_controller_parallelizes_folds_without_changing_results(tmp_p
         ]
 
     before, after = tmp_path / "repeat", tmp_path / "fold"
+    # rf_reg fits use min_threads=8 native threads; parallel tree-prediction
+    # accumulation and BLAS reductions then vary by one ulp across process
+    # placements, so float-bearing payloads compare with tolerance.
+    tolerant = case == "pipeline_custom_cv"
     for repeat in range(1, 3):
         relative = Path(f"models/{model}/repeat_{repeat}")
         a, b = [
@@ -232,7 +385,10 @@ def test_one_repeat_controller_parallelizes_folds_without_changing_results(tmp_p
             "phenotype_scaler",
             "optimization_info",
         ]:
-            assert a[key] == b[key], key
+            if tolerant and key in {"ensemble_metrics", "optimization_info"}:
+                _assert_json_close(a[key], b[key])
+            else:
+                assert a[key] == b[key], key
         for af, bf in zip(a["fold_results"], b["fold_results"], strict=True):
             for key in [
                 "train_indices",
@@ -241,12 +397,24 @@ def test_one_repeat_controller_parallelizes_folds_without_changing_results(tmp_p
                 "val_metrics",
                 "test_metrics",
             ]:
-                assert af[key] == bf[key], key
+                if tolerant and key.endswith("_metrics"):
+                    _assert_json_close(af[key], bf[key])
+                else:
+                    assert af[key] == bf[key], key
         for name in ["all_predictions.json", "cv_train_only.csv"]:
-            assert (before / relative / name).read_bytes() == (after / relative / name).read_bytes()
-    assert json.loads((before / "evaluation/holdout_metrics.json").read_text()) == json.loads(
-        (after / "evaluation/holdout_metrics.json").read_text()
-    )
+            if name == "all_predictions.json" and tolerant:
+                _assert_predictions_close(before / relative / name, after / relative / name)
+            else:
+                assert (before / relative / name).read_bytes() == (
+                    after / relative / name
+                ).read_bytes()
+    holdout = [
+        json.loads((p / "evaluation/holdout_metrics.json").read_text()) for p in (before, after)
+    ]
+    if tolerant:
+        _assert_json_close(*holdout)
+    else:
+        assert holdout[0] == holdout[1]
 
     histories = []
     for mode in ("repeat", "fold"):
@@ -257,7 +425,10 @@ def test_one_repeat_controller_parallelizes_folds_without_changing_results(tmp_p
                 if event["stage"] == "trial_history"
             ]
         )
-    assert histories[0] == histories[1]
+    if tolerant:
+        _assert_json_close(histories[0], histories[1])
+    else:
+        assert histories[0] == histories[1]
     trace = traces["fold"]
     assert _peak(trace, {"fold"}) >= 2
     assert 2 <= _peak(trace, {"optimization_fold"}) <= 3
