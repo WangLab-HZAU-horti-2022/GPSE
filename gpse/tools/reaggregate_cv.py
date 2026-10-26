@@ -80,8 +80,16 @@ def reaggregate(
         raise ValueError("Offline output must be outside the historical results directory")
     if not source.is_dir():
         raise FileNotFoundError(f"Historical results directory does not exist: {source}")
+    models_root = source / "models" if (source / "models").is_dir() else source
+    source_layout = "v3" if models_root != source else "v2"
+    if models_root != source and any(source.glob("*/repeat_*/repeat_results.json")):
+        raise ValueError(
+            "Both v2 and v3 model results exist; use an unambiguous single-run directory"
+        )
+    if models_root == source and (source / "runs").is_dir():
+        raise ValueError("Specify one run directory inside runs/, not the results collection root")
     output.mkdir(parents=True, exist_ok=False)
-    files = sorted(source.glob("*/repeat_*/repeat_results.json"))
+    files = sorted(models_root.glob("*/repeat_*/repeat_results.json"))
     groups, aggregates, failures, hashes = {}, {}, {}, {}
     input_errors = {}
 
@@ -105,7 +113,7 @@ def reaggregate(
             failures[model] = f"Unreadable/invalid historical inputs for {relative}: {exc}"
     # Include models for which only a historical summary survived.
     for pattern in ("*/summary_results.json", "*/cv_failure.json"):
-        for path in source.glob(pattern):
+        for path in models_root.glob(pattern):
             groups.setdefault(path.parent.name, [])
     for model, repeats in groups.items():
         if model in failures:
@@ -130,7 +138,7 @@ def reaggregate(
     refit_required, refit_unknown, saved_artifacts = set(), set(), []
     for model in sorted(groups):
         for role in ("deployment_ensemble", "representative_model"):
-            artifact_dir = source / model / role
+            artifact_dir = models_root / model / role
             if not artifact_dir.is_dir():
                 continue
             info_path = artifact_dir / "info.json"
@@ -162,6 +170,8 @@ def reaggregate(
         "historical_artifacts_migrated": False,
         "historical_score_validation": "finite/range checks; prediction checks where retained; undocumented legacy zero substitution cannot be reversed without predictions",
         "source": str(source),
+        "source_layout": source_layout,
+        "source_models_directory": str(models_root.relative_to(source)),
         "source_sha256": hashes,
         "reaggregation_code_version": digest(
             {

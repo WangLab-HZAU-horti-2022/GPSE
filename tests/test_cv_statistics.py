@@ -241,9 +241,7 @@ def test_real_pipeline_selection_stacking_and_training_only_refit(tmp_path, monk
     training, holdout = create_holdout_indices(y, 0.2, 42, "regression")
     assert set(fit_targets).issubset(set(y.iloc[training]))
     assert not set(fit_targets).intersection(set(y.iloc[holdout]))
-    ranking = pd.read_csv(
-        tmp_path / "run" / "selection" / "model_comparison_cv_topsis_simple.csv"
-    )
+    ranking = pd.read_csv(tmp_path / "run" / "selection" / "model_comparison_cv_topsis_simple.csv")
     chosen = json.loads(
         (tmp_path / "run" / "selection" / "stacking_selected_models.json").read_text()
     )
@@ -424,3 +422,58 @@ def test_offline_refit_list_uses_artifact_training_metadata(
     assert audit["deployment_refit_required"] == required
     assert audit["deployment_refit_unknown"] == unknown
     assert len(audit["saved_artifact_audit"]) == 1
+
+
+def test_offline_v2_v3_layouts_produce_identical_statistics_and_rankings(tmp_path):
+    data = {
+        "lucky": repeats([[0.18, 0.19, 0.2, 0.21, 0.22]] * 49 + [[0.88, 0.89, 0.9, 0.91, 0.92]]),
+        "stable": repeats([[0.48, 0.49, 0.5, 0.51, 0.52]] * 50),
+    }
+    audits, results = [], []
+    for layout in ("v2", "v3"):
+        source, output = tmp_path / layout, tmp_path / (layout + "-analysis")
+        models_root = source / "models" if layout == "v3" else source
+        write_history(models_root, data)
+        artifact = models_root / "lucky" / "deployment_ensemble"
+        artifact.mkdir()
+        (artifact / "info.json").write_text('{"trained_on": "all_samples"}')
+        before = {p: p.read_bytes() for p in source.rglob("*") if p.is_file()}
+        audits.append(reaggregate(source, output, 50, 5))
+        results.append(pd.read_csv(output / "cv_ranking_comparison.csv"))
+        assert all(p.read_bytes() == payload for p, payload in before.items())
+        summary = json.loads((output / "cv_aggregation_summary.json").read_text())
+        assert summary["source_layout"] == layout
+        assert summary["source_models_directory"] == ("models" if layout == "v3" else ".")
+        assert len(pd.read_csv(output / "cv_fold_metrics.csv")) == 500
+        assert len(pd.read_csv(output / "cv_repeat_metrics.csv")) == 100
+    pd.testing.assert_frame_equal(results[0], results[1])
+    assert audits[0] == audits[1]
+    assert audits[1]["recovered_models"] == ["lucky", "stable"]
+    assert audits[1]["deployment_refit_required"] == ["lucky"]
+
+
+def test_offline_v3_summary_only_model_is_not_silently_omitted(tmp_path):
+    source = tmp_path / "run"
+    write_history(source / "models", {"complete": repeats([[0.2, 0.4]] * 2)})
+    summary = source / "models" / "missing" / "summary_results.json"
+    summary.parent.mkdir()
+    summary.write_text("{}")
+    audit = reaggregate(source, tmp_path / "analysis", 2, 2)
+    assert audit["recovered_models"] == ["complete"]
+    assert "missing" in audit["requires_cv_retraining"]
+    assert audit["ranking_status"] == "unavailable"
+
+
+def test_offline_mixed_layout_and_collection_root_rejected_before_output(tmp_path):
+    source = tmp_path / "mixed"
+    write_history(source, {"old": repeats([[0.2, 0.4]] * 2)})
+    write_history(source / "models", {"new": repeats([[0.4, 0.6]] * 2)})
+    output = tmp_path / "analysis"
+    with pytest.raises(ValueError, match="Both v2 and v3"):
+        reaggregate(source, output, 2, 2)
+    assert not output.exists()
+    collection = tmp_path / "collection"
+    (collection / "runs").mkdir(parents=True)
+    with pytest.raises(ValueError, match="one run directory"):
+        reaggregate(collection, output, 2, 2)
+    assert not output.exists()
