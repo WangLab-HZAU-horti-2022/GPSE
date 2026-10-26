@@ -100,6 +100,11 @@ out/
 dummy_out/
 # result/
 
+# ---- Large run-output trees under tests/ ----
+tests/manuscript_runs/
+tests/expression_prediction_test/
+tests/figure_1_delivery/
+
 # ---- Other ----
 
 # ---- Markdown reports / notes under tests ----
