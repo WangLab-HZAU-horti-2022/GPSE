@@ -33,6 +33,67 @@ GPSE is a comprehensive, machine-learning-based pipeline for genomic selection a
 * **Stacking Ensemble**: Automatically ensembles the Top-N performing models to maximize prediction accuracy.
 * **MCP Server for AI Agents**: Ships an [MCP](https://modelcontextprotocol.io) server (`gpse-mcp` / `gpse mcp`) exposing the full convert → train → predict workflow as MCP tools, with background-job management (status / log / stop) for long-running training — see [§6](#6-mcp-server-gpse-mcp).
 
+## ⚠️ Important: Legacy `scripts/` Results Are Not a Fair Baseline
+
+The historical scripts under `scripts/` (used for the thesis-era results) produce
+**systematically higher** test metrics than `gpse`. This is expected: it comes from
+evaluation leakage that `gpse` deliberately removes, **not** from a regression in the
+new code. Do not quote legacy numbers as a fair baseline.
+
+* **Test-set model selection (oracle leakage).** Legacy TOPSIS ranking and stacking
+  Top-N selection used **test-set** metrics (`Test Pearson` / `Test Pearson (std)`) —
+  see `scripts/topsis_evaluator.py:99` and `scripts/genomic_prediction_v2.py:1499-1512`.
+  `gpse` selects models using **training-side repeated-CV** metrics only
+  (`cv_mean` / `cv_std_repeat`, `gpse/config/topsis.yaml`); holdout metrics are
+  reporting-only.
+* **Stacking scaler leakage.** Legacy stacking reused a scaler fitted on the full
+  training partition when generating out-of-fold meta-features
+  (`scripts/ensemble_stacking.py:263-292`); `gpse` rebuilds the full preprocessing
+  pipeline inside each fold (strict OOF, `gpse/train/stacking.py`).
+* **Phenotype standardization before the split.** Legacy `load_data` z-scored the
+  full phenotype vector including test samples
+  (`scripts/genomic_prediction_v2.py:504-507`); `gpse` fits the scaler on the
+  training partition only (`gpse/train/_repeat_training.py:259-260`).
+* **Different defaults.** Legacy defaults: `--n_repeats 100`; `gpse` defaults to
+  50 repeats and adds `gblup_reg` to the candidate pool, which changes TOPSIS
+  ranking and stacking membership unless `--models` is passed explicitly.
+
+Model default hyperparameters, the TOPSIS algorithm itself, fold-level genotype
+scaling, and the fixed-holdout split logic are identical between the two
+implementations.
+
+**Reading the gap correctly.** The legacy numbers are not fabricated — the models
+and methods were sound — but the evaluation protocol was optimistic in three ways:
+model selection borrowed information from the test set, stacking meta-features
+were mildly optimistic, and the tiny repeat SD over one shared test set reflected
+training noise rather than generalization to new samples. What `gpse` reports is
+the unbiased estimate that remains after squeezing out that inflation: selection
+uses training-side CV only, scalers are refit inside each fold, and
+standardization touches the training partition only. So `gpse` is not "worse" —
+the legacy results were inflated, and the `gpse` numbers are the ones that can be
+fairly compared against baselines such as GBLUP/rrBLUP and that survive scrutiny.
+
+**How to close the gap legitimately** (without reintroducing leakage):
+
+1. **Enable HPO** — historical results were mostly run with `--use_default_params`;
+   running `gpse train --trials 100` tunes hyperparameters inside training-side CV,
+   which is leak-free and usually recovers real accuracy.
+2. **Repeat the stacking evaluation** — the gpse stacking score is currently a
+   single-holdout evaluation (std is always 0 and can land low by chance); running
+   stacking under the repeated-CV protocol and reporting mean ± SD gives a stable,
+   defensible number.
+3. **Align the protocol before comparing** — pass the historical 14-model list
+   explicitly, use the same `--cv_file`, `--test_size 0.3`, and `--random_seed 42`;
+   after alignment, single-model Test Pearson should differ by no more than ~0.02.
+
+**How to compare fairly:** align the protocol (same `--cv_file`, `--test_size`,
+`--random_seed 42`, `--use_default_params`, explicit historical 14-model list) and
+compare **single-model Test Pearson** only; absolute differences beyond `0.02`
+warrant investigation. See the full audit in
+[`docs/26.10.22/topsis_investigation_report.md`](docs/26.10.22/topsis_investigation_report.md)
+and the reproduction SOP in
+[`docs/6species_reproduction_validation.md`](docs/6species_reproduction_validation.md).
+
 ## 📖 Documentation
 
 - [Wiki Home](docs/wiki/README.md) — full documentation index
@@ -388,6 +449,16 @@ gpse train \
     --results_dir output_results/
 ```
 
+> **💡 Optuna HPO is ON by default**
+>
+> As long as you do **not** pass `--use_default_params`, every model is tuned with
+> Optuna (`--trials 100 --patience 20` are good production values; the objective is
+> `mean(CV) − λ·std(CV)`, tune λ via `--cv_stability_penalty`). By default only the
+> first repeat is optimized and its parameters are frozen for the remaining repeats;
+> add `--optuna_per_repeat` to re-tune every repeat (slower but more thorough).
+> `--use_default_params` exists only for paper-protocol reproduction of historical
+> results.
+
 > **💡 Shortcut for total core usage: `--threads`**
 >
 > `--threads N` sets the shared logical CPU budget. GPSE derives model, repeat
@@ -541,7 +612,9 @@ defaults:
   geno_file: maize_geno.csv
   pheno_file: maize_pheno.csv        # multi-trait table; `name` selects the column
   task_type: regression
-  use_default_params: true
+  use_default_params: false          # Optuna HPO is on by default; true = paper-protocol reproduction only
+  trials: 100                        # max Optuna trials per model
+  patience: 20                       # Optuna early-stopping patience
   use_stacking: true
   n_repeats: 2
   threads: 60
@@ -1209,6 +1282,10 @@ live in the corresponding workflow package.
 * `rich` & `loguru` (for beautiful CLI output and logging)
 
 ## 📝 Recent Updates
+
+* **0.0.7: HPO-by-Default Documentation & Leakage Disclosure** (`2026-10-31`)
+  * Clarified that **Optuna hyperparameter optimization is enabled by default** (`--use_default_params` opts out and exists only for paper-protocol reproduction); added an explicit HPO note to the `gpse train` usage docs, and switched the `gpse batch` example configs to `use_default_params: false` with `trials: 100` / `patience: 20`.
+  * Added a prominent README section ("Legacy `scripts/` Results Are Not a Fair Baseline") documenting why historical `scripts/` test metrics are systematically higher than `gpse` (test-set model selection, stacking scaler leakage, pre-split phenotype standardization), and how to close the gap legitimately.
 
 * **0.0.3a1: Batch Training, Data Splitting & Validation Suite** (`2026-07-21`)
   * New `gpse batch` subcommand: YAML-driven multi-trait batch training. `defaults` accepts any `gpse train` option, each trait can override options individually, `--dry_run` previews the generated per-trait commands, and per-trait summary tables are merged into `<results_root>/merged/` after the run.

@@ -10,7 +10,11 @@ defaults:
 
   # ---- 训练参数（与 gpse train 的参数同名；不写的用 train 自带默认值）----
   task_type: regression
-  use_default_params: true
+  # Optuna 超参调优默认开启；历史复现才用 use_default_params: true
+  use_default_params: false
+  trials: 100               # 每个模型的 Optuna 最大试验次数
+  patience: 20              # 早停耐心值
+  # optuna_per_repeat: true # 每个 repeat 重新调参（更慢更充分；默认只调第 1 个 repeat 后冻结复用）
   test_size: 0.3
   n_splits: 5
   n_repeats: 2
